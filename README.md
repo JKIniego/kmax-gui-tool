@@ -17,7 +17,7 @@ python -m http.server 8000
 
 3. Open your browser and go to:
 ```
-http://localhost:8000
+http://localhost:8000/main.html
 ```
 4. The `index.html` file will be loaded automatically.
 
