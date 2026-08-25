@@ -1125,6 +1125,12 @@ export class Soundness {
             description: weakResult.pass
                 ? "Weak Soundness: Satisfied"
                 : "Weak Soundness: Not Satisfied"
+        }, {
+            pass: false,
+            description: "Impedance-free L-values: Not satisfied (mock)"
+        }, {
+            pass: true,
+            description: "kᵐᵃˣ-ensuring: Satisfied (mock)"
         }];
 
         const pass = criteria.every(criterion => criterion.pass);
