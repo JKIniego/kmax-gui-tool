@@ -1117,4 +1117,28 @@ export class Soundness {
             visualizationData
         };
     }
+
+    static checkkmaxSound(graph, evsa, matrixInput) {
+        const weakResult = Soundness.checkWeakSound(graph, evsa, matrixInput);
+        const criteria = [{
+            pass: weakResult.pass,
+            description: weakResult.pass
+                ? "Weak Soundness: Satisfied"
+                : "Weak Soundness: Not Satisfied"
+        }];
+
+        const pass = criteria.every(criterion => criterion.pass);
+
+        return {
+            ...weakResult,
+            pass,
+            message: pass
+                ? "The model is kᵐᵃˣ Sound"
+                : "kᵐᵃˣ-Soundness Check was inconclusive",
+            description: pass
+                ? "The model satisfies all kᵐᵃˣ-soundness criteria."
+                : "The model does not satisfy all kᵐᵃˣ-soundness criteria.",
+            criteria
+        };
+    }
 }

@@ -287,6 +287,23 @@ export function verifySoundness(model, source, sink, soundnessNotion) {
 
             break;
 
+        case 'kmax':
+            console.time("kmax Soundness Verification");
+            const matrixInputSound = {
+                input_rdlt,
+                R1,
+                R2
+            };
+            const kmaxResult = Soundness.checkkmaxSound(rdltGraph, combinedEvsa, matrixInputSound);
+            console.timeEnd("kmax Soundness Verification");
+
+            soundnessPass = kmaxResult.pass;
+            soundnessTitle = kmaxResult.message;
+            soundnessDescription = kmaxResult.description;
+            soundnessCriteria = kmaxResult.criteria;
+
+            break;
+
         case 'weak':
             console.time("Weak Soundness Verification");
             const matrixInput = {
