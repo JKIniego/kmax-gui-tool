@@ -9,6 +9,8 @@ import { ActivityProfile } from '../models/ActivityProfile.js';
 import { Activity } from '../models/Activity.js';
 import { CASExtractor } from './cas-extractor.js';
 import { GeneralizedImpedance } from './generalized-impedance.js';
+import { checkArc } from '../../aes.mjs';
+import { buildArcMap, buildArcsAdjacencyMatrix, buildRBSMatrix, buildVertexMap } from '../../../utils.mjs';
 // No need to import visualizer here - it's used in soundness-service
 
 /**
@@ -1120,6 +1122,55 @@ export class Soundness {
 
     static checkkmaxSound(graph, evsa, matrixInput) {
         const weakResult = Soundness.checkWeakSound(graph, evsa, matrixInput);
+
+        let kmax = 0;
+        let source = null;
+
+        try {
+            ({ source } = utils.getSourceAndSinkVertices(graph));
+        } catch (error) {
+            console.warn("Unable to determine source vertex for kmax check.", error);
+        }
+
+        const inputModel = matrixInput?.input_rdlt?.model;
+        const originalArcs = inputModel?.arcs || [];
+        const originalComponents = inputModel?.components || [];
+
+        // The model must allow kmax-number of activities to initiate, traverse,
+        // and terminate, similar to the WF-Net definition. This creates the need
+        // to require every activity to terminate properly explicitly. With this,
+        // the kmax number of activities to be completed can be determined by the
+        // number of outgoing arcs from the source s.
+        if (source && originalArcs.length > 0) {
+            const vertexMap = buildVertexMap(originalComponents);
+            const arcMap = buildArcMap(originalArcs);
+            const arcsMatrix = buildArcsAdjacencyMatrix(originalArcs);
+            const rbsMatrix = buildRBSMatrix(vertexMap, originalArcs);
+            const cache = {
+                vertexMap,
+                arcs: originalArcs,
+                arcMap,
+                arcsMatrix,
+                rbsMatrix,
+            };
+            const states = {
+                T: {},
+                CTIndicator: {},
+                path: [source.id],
+                activityProfile: {},
+                tor: {}
+            };
+
+            for (const arc of originalArcs) {
+                if (arc.fromVertexUID !== source.id) continue;
+
+                const isUnconstrained = checkArc({ arcUID: arc.uid }, states, cache);
+                if (isUnconstrained) {
+                    kmax += 1;
+                }
+            }
+        }
+
         const criteria = [{
             pass: weakResult.pass,
             description: weakResult.pass
@@ -1137,9 +1188,10 @@ export class Soundness {
 
         return {
             ...weakResult,
+            kmax,
             pass,
             message: pass
-                ? "The model is kᵐᵃˣ Sound"
+                ? `The model is kᵐᵃˣ Sound (kᵐᵃˣ = ${kmax})`
                 : "kᵐᵃˣ-soundness check was inconclusive",
             description: pass
                 ? "The model satisfies all kᵐᵃˣ-soundness criteria."
