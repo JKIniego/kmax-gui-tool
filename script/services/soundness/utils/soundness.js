@@ -1172,6 +1172,18 @@ export class Soundness {
         }
 
         console.log(`kmax = ${kmax}`);
+        
+        let isImpedanceFreeLValues = true;
+
+        for (const rdlt of evsa) {
+            const edgeList = rdlt.edges;
+            
+            for (let edge = 0; edge < edgeList.length; edge++) {
+                if (kmax > edgeList[edge].maxTraversals) {
+                    isImpedanceFreeLValues = false;
+                }
+            }
+        }
 
         const criteria = [{
             pass: weakResult.pass,
@@ -1179,8 +1191,10 @@ export class Soundness {
                 ? "Weak Soundness: Satisfied"
                 : "Weak Soundness: Not Satisfied"
         }, {
-            pass: true,
-            description: "Impedance-free L-values: Not satisfied (mock)"
+            pass: isImpedanceFreeLValues,
+            description: isImpedanceFreeLValues
+                ? "Impedance-free L-values: Satisfied"
+                : "Impedance-free L-values: Not satisfied"
         }, {
             pass: true,
             description: "kᵐᵃˣ-ensuring: Satisfied (mock)"
