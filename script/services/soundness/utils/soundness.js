@@ -1161,13 +1161,11 @@ export class Soundness {
                 tor: {}
             };
 
-            for (const arc of originalArcs) {
-                if (arc.fromVertexUID !== source.id) continue;
-
+            const outgoingArcs = originalArcs.filter(arc => arc.fromVertexUID === source.id);
+            for (const arc of outgoingArcs) {
                 const isUnconstrained = checkArc({ arcUID: arc.uid }, states, cache);
-                if (isUnconstrained) {
-                    kmax += 1;
-                }
+                
+                if (isUnconstrained) kmax += 1;
             }
         }
 
