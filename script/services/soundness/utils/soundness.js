@@ -1151,6 +1151,9 @@ export class Soundness {
         const violations = [];
         let level = 1;
 
+        // The WRSVA verifies the weak-soundness property of an RDLT by checking
+        // for deadlock tolerance that ensures proper termination regardless of
+        // liveliness. Hence, it can be used to check for kmax-soundness of an RDLT.
         const weakResult = Soundness.checkWeakSound(graph, evsa, matrixInput);
         criteria.push({
             pass: weakResult.pass,
@@ -1212,6 +1215,8 @@ export class Soundness {
             let isImpedanceFreeLValues = true;
             const edgeList = rdlt.edges;
             
+            // All arcs in the input RDLT must have an L-value larger, if not equal,
+            // to the number of traversable outgoing arcs from the source.
             for (const edge of edgeList) {
                 if (kmax > edge.maxTraversals) {
                     isImpedanceFreeLValues = false;
