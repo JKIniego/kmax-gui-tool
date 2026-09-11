@@ -1121,7 +1121,17 @@ export class Soundness {
     }
 
     static checkkmaxSound(graph, evsa, matrixInput) {
+        const criteria = [];
+        let level = 1;
+
         const weakResult = Soundness.checkWeakSound(graph, evsa, matrixInput);
+        criteria.push({
+            pass: weakResult.pass,
+            description: weakResult.pass
+                ? "Weak Soundness: Satisfied"
+                : "Weak Soundness: Not Satisfied"
+        });
+
 
         let kmax = 0;
         let source = null;
@@ -1170,10 +1180,9 @@ export class Soundness {
         }
 
         console.log(`kmax = ${kmax}`);
-        
-        let isImpedanceFreeLValues = true;
 
         for (const rdlt of evsa) {
+            let isImpedanceFreeLValues = true;
             const edgeList = rdlt.edges;
             
             for (let edge = 0; edge < edgeList.length; edge++) {
@@ -1181,22 +1190,16 @@ export class Soundness {
                     isImpedanceFreeLValues = false;
                 }
             }
-        }
 
-        const criteria = [{
-            pass: weakResult.pass,
-            description: weakResult.pass
-                ? "Weak Soundness: Satisfied"
-                : "Weak Soundness: Not Satisfied"
-        }, {
-            pass: isImpedanceFreeLValues,
-            description: isImpedanceFreeLValues
-                ? "Impedance-free L-values: Satisfied"
-                : "Impedance-free L-values: Not satisfied"
-        }, {
-            pass: true,
-            description: "kᵐᵃˣ-ensuring: Satisfied (mock)"
-        }];
+            criteria.push({
+                pass: isImpedanceFreeLValues,
+                description: isImpedanceFreeLValues
+                    ? `Impedance-free L-values (L${level}): Satisfied`
+                    : `Impedance-free L-values (L${level}): Not satisfied`
+            });
+
+            level++;
+        }
 
         const pass = criteria.every(criterion => criterion.pass);
 
