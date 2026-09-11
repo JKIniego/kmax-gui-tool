@@ -302,6 +302,48 @@ export function verifySoundness(model, source, sink, soundnessNotion) {
             soundnessDescription = kmaxResult.description;
             soundnessCriteria = kmaxResult.criteria;
 
+            if (kmaxResult.violations) {
+                const transformedArcMap = utils.transformArcMap(arcMap);
+
+                kmaxResult.violations.forEach(violation => {
+                    if (violation.type === "edge" || violation.type === "asoy-edge") {
+                        const arcIdentifiers = (violation.id || violation.arc || "")
+                            .replace(/[()]/g, '')
+                            .split(', ')
+                            .filter(Boolean);
+
+                        if (arcIdentifiers.length < 2) {
+                            console.warn(`No arc identifiers found for kmax violation:`, violation);
+                            return;
+                        }
+
+                        const fromUID = Object.keys(vertexMap).find(key => vertexMap[key].identifier === arcIdentifiers[0]);
+                        const toUID = Object.keys(vertexMap).find(key => vertexMap[key].identifier === arcIdentifiers[1]);
+
+                        if (!fromUID || !toUID) {
+                            console.warn(`No UID found for kmax violation arc: ${violation.id}`);
+                            return;
+                        }
+
+                        const arcKey = `${fromUID}, ${toUID}`;
+                        const matchingArcs = transformedArcMap[arcKey];
+
+                        if (matchingArcs) {
+                            matchingArcs.forEach(matchedArc => {
+                                if (!soundnessViolation.arcs.includes(matchedArc.uid)) {
+                                    soundnessViolation.arcs.push(matchedArc.uid);
+                                }
+
+                                const existingRemark = soundnessViolationRemarks.arcs[matchedArc.uid];
+                                soundnessViolationRemarks.arcs[matchedArc.uid] = existingRemark
+                                    ? `${existingRemark}; ${violation.message}`
+                                    : `${violation.message}`;
+                            });
+                        }
+                    }
+                });
+            }
+
             break;
 
         case 'weak':

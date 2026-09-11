@@ -1122,6 +1122,7 @@ export class Soundness {
 
     static checkkmaxSound(graph, evsa, matrixInput) {
         const criteria = [];
+        const violations = [];
         let level = 1;
 
         const weakResult = Soundness.checkWeakSound(graph, evsa, matrixInput);
@@ -1185,9 +1186,14 @@ export class Soundness {
             let isImpedanceFreeLValues = true;
             const edgeList = rdlt.edges;
             
-            for (let edge = 0; edge < edgeList.length; edge++) {
-                if (kmax > edgeList[edge].maxTraversals) {
+            for (const edge of edgeList) {
+                if (kmax > edge.maxTraversals) {
                     isImpedanceFreeLValues = false;
+                    violations.push({
+                        id: `${edge.from.id}, ${edge.to.id}`,
+                        type: "edge",
+                        message: `Impedance-free L-values violation (L${level}): ${edge.from.id} → ${edge.to.id} has L=${edge.maxTraversals}, but kᵐᵃˣ requires at least ${kmax}.`
+                    });
                 }
             }
 
@@ -1213,7 +1219,8 @@ export class Soundness {
             description: pass
                 ? "The model satisfies all kᵐᵃˣ-soundness criteria."
                 : "The model does not satisfy all kᵐᵃˣ-soundness criteria.",
-            criteria
+            criteria,
+            violations
         };
     }
 }
