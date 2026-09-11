@@ -1119,7 +1119,33 @@ export class Soundness {
             visualizationData
         };
     }
-
+    
+    /**
+     * Verifies the kmax-soundness property of an RDLT by checking the three
+     * formal structural conditions for kmax-safeness (Definition 19 / Theorem 10):
+     *   1. Deadlock Tolerance (Weak Soundness) – verified via WRSVA (loop-safe NCAs,
+     *      safe CAs, weakened JOIN-safe L-values, and escape contraction paths).
+     *   2. Impedance-Free L-values – all arc reusability limits satisfy L(x, y) >= kmax.
+     *   3. kmax-Ensuring Gateway Balance – split-join topology satisfies:
+     *      - Merging joins: Jm = ceil(|Esplit| / 2) - kmax + 1
+     *      - Separating joins: Js = kmax - 1
+     *
+     * The criteria array returned ALWAYS contains all three visible entries
+     * (Deadlock Tolerance, Impedance-Free L-Values, kmax-Ensuring)
+     * so the UI can show every condition and its status regardless of outcome.
+     *
+     * @param {Graph} graph - The original input RDLT R.
+     * @param {Graph[]} evsa - Array containing [R1, R2, ...] vertex-simplified RDLTs.
+     * @param {Object} matrixInput - the RDLT & EVSA representation objects in readable format for matrix operations of Asoy
+     * @returns {{
+     *   pass: boolean,
+     *   message: string,
+     *   description: string,
+     *   violations: Array,
+     *   criteria: Array,
+     *   visualizationData: Object
+     * }}
+     */
     static checkkmaxSound(graph, evsa, matrixInput) {
         const criteria = [];
         const violations = [];
