@@ -4,7 +4,7 @@ This project uses JavaScript ES Modules (`.mjs`).
 
 ## Requirements
 
-- Python 3
+- [Node.js](https://nodejs.org/) (includes `npx`)
 
 ## Run the Project
 
@@ -12,12 +12,12 @@ This project uses JavaScript ES Modules (`.mjs`).
 
 2. Start the local web server:
 ```bash
-python -m http.server 8000
+npx serve
 ```
 
-3. Open your browser and go to:
+3. Open your browser and go to the local address printed in the terminal (by default):
 ```
-http://localhost:8000/main.html
+http://localhost:3000
 ```
 4. The `index.html` file will be loaded automatically.
 
@@ -29,7 +29,7 @@ Do not open `index.html` directly using:
 file:///...
 ```
 
-The project uses ES Modules (`.mjs), which require the files to be served through a local web server.
+The project uses ES Modules (`.mjs`), which require the files to be served through a local web server.
 
 ## Stop the Server
 
