@@ -1,90 +1,87 @@
-﻿export function buildSplitJoinPairs(graph) {
-    if (!graph || !graph.vertices || !graph.edges) {
-        return {
-            splitJoinPairs: [],
-            siblingPairs: []
-        };
-    }
+﻿import { findSplitJoinPoints } from "../../well-handledness/src/Siblings.js";
 
-    const normalizeConstraint = value => {
-        if (value === undefined || value === null || value === '') return 0;
-        if (value === 'ϵ' || value === 'epsilon' || value === 'EPS') return 0;
-        return value;
-    };
-
-    const getVertexId = vertex => vertex?.id ?? vertex?.name ?? vertex;
-
-    const splitPoints = [...graph.vertices].filter(vertex => {
-        const outgoingArcs = graph.edges.filter(edge => getVertexId(edge.from) === getVertexId(vertex));
-        return outgoingArcs.length > 1;
-    });
-
-    const joinPoints = [...graph.vertices].filter(vertex => {
-        const incomingArcs = graph.edges.filter(edge => getVertexId(edge.to) === getVertexId(vertex));
-        return incomingArcs.length > 1;
-    });
-
-    const findSimplePaths = (startId, endId) => {
-        const paths = [];
-
-        const dfs = (currentId, path, visited) => {
-            if (currentId === endId) {
-                paths.push([...path]);
-                return;
-            }
-
-            const outgoingArcs = graph.edges.filter(edge => getVertexId(edge.from) === currentId);
-
-            for (const edge of outgoingArcs) {
-                const nextId = getVertexId(edge.to);
-                if (visited.has(nextId)) continue;
-
-                visited.add(nextId);
-                path.push(nextId);
-                dfs(nextId, path, visited);
-                path.pop();
-                visited.delete(nextId);
-            }
-        };
-
-        dfs(startId, [startId], new Set([startId]));
-        return paths;
-    };
-
-    const splitJoinPairs = [];
-
-    for (const split of splitPoints) {
-        for (const join of joinPoints) {
-            const splitId = getVertexId(split);
-            const joinId = getVertexId(join);
-
-            const incomingArcs = graph.edges.filter(edge => getVertexId(edge.to) === joinId);
-            const distinctIncomingC = [...new Set(incomingArcs.map(edge => normalizeConstraint(edge.constraint ?? edge.C ?? 0)))];
-            const joinType = distinctIncomingC.length > 1
-                ? (distinctIncomingC.includes(0) ? 'MIX' : 'AND')
-                : 'OR';
-
-            const paths = findSimplePaths(splitId, joinId);
-
-            splitJoinPairs.push({
-                key: `${splitId}-${joinId}`,
-                splitId,
-                joinId,
-                splitVertexId: splitId,
-                joinVertexId: joinId,
-                splitVertex: split,
-                joinVertex: join,
-                join_type: joinType,
-                pathCount: paths.length,
-                paths
-            });
-        }
-    }
-
-    const siblingPairs = splitJoinPairs.filter(pair => pair.pathCount > 1);
-
-    return {
-        splitJoinPairs,
-        siblingPairs
-    };
+function getNodeId(value) {
+  if (value == null) return null;
+  if (typeof value === "string" || typeof value === "number") {
+    return String(value);
+  }
+  return value.id ?? value.uid ?? value.name ?? value.identifier ?? value.label ?? null;
 }
+
+function normalizeGraphForSplitJoin(graph) {
+  if (!graph || typeof graph !== "object") {
+    return {};
+  }
+
+  if (Array.isArray(graph.vertices) && Array.isArray(graph.edges)) {
+    const adjacency = {};
+
+    for (const vertex of graph.vertices) {
+      const id = getNodeId(vertex);
+      if (id == null) continue;
+      adjacency[id] = adjacency[id] || {};
+    }
+
+    for (const edge of graph.edges) {
+      const from = edge?.from ?? edge?.source ?? edge?.fromVertex;
+      const to = edge?.to ?? edge?.target ?? edge?.toVertex;
+      const fromId = getNodeId(from);
+      const toId = getNodeId(to);
+
+      if (fromId == null || toId == null) continue;
+      adjacency[fromId] = adjacency[fromId] || {};
+      adjacency[toId] = adjacency[toId] || {};
+      adjacency[fromId][toId] = true;
+    }
+
+    return adjacency;
+  }
+
+  return graph;
+}
+
+/**
+ * Reuse the split/join detection from the well-handledness utilities and
+ * return every split-join pair as a flat list of [split, join] tuples.
+ *
+ * This intentionally keeps the behavior minimal: it does not compute sibling
+ * paths or validation outcomes, only the raw pair generation used by kmax
+ * soundness checks.
+ *
+ * @param {Record<string, Record<string, unknown>> | { vertices: Array, edges: Array }} graph
+ * @returns {Array<[string, string]>}
+ */
+export function findSplitJoinPairs(graph) {
+  const normalizedGraph = normalizeGraphForSplitJoin(graph);
+  let { splitPoints, joinPoints } = findSplitJoinPoints(normalizedGraph);
+
+  if ((splitPoints?.size ?? 0) === 0 && (joinPoints?.size ?? 0) === 0) {
+    const fallbackSplitPoints = new Set();
+    const fallbackJoinPoints = new Set();
+
+    for (const [node, neighbors] of Object.entries(normalizedGraph)) {
+      const outDegree = Object.keys(neighbors || {}).length;
+      const inDegree = Object.values(normalizedGraph).filter(candidate =>
+        candidate && Object.prototype.hasOwnProperty.call(candidate, node)
+      ).length;
+
+      if (outDegree > 1) fallbackSplitPoints.add(node);
+      if (inDegree > 1) fallbackJoinPoints.add(node);
+    }
+
+    splitPoints = fallbackSplitPoints;
+    joinPoints = fallbackJoinPoints;
+  }
+
+  const pairs = [];
+
+  for (const split of splitPoints) {
+    for (const join of joinPoints) {
+      pairs.push([split, join]);
+    }
+  }
+
+  return pairs;
+}
+
+export default findSplitJoinPairs;
