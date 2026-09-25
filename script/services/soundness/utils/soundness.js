@@ -1162,8 +1162,6 @@ export class Soundness {
                 ? "Weak Soundness: Satisfied"
                 : "Weak Soundness: Not Satisfied"
         });
-        
-        console.log(buildSplitJoinPairs(graph));
 
         let kmax = 0;
         let source = null;
@@ -1229,6 +1227,8 @@ export class Soundness {
                     });
                 }
             }
+            
+            console.log(buildSplitJoinPairs(rdlt));
 
             criteria.push({
                 pass: isImpedanceFreeLValues,
