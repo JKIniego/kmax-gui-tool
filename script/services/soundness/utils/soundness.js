@@ -11,7 +11,7 @@ import { CASExtractor } from './cas-extractor.js';
 import { GeneralizedImpedance } from './generalized-impedance.js';
 import { checkArc } from '../../aes.mjs';
 import { buildArcMap, buildArcsAdjacencyMatrix, buildRBSMatrix, buildVertexMap } from '../../../utils.mjs';
-import { findSplitJoinPairs } from './kmax.mjs';
+import { buildSplitJoinPairs } from './kmax.mjs';
 // No need to import visualizer here - it's used in soundness-service
 
 /**
@@ -1162,6 +1162,8 @@ export class Soundness {
                 ? "Weak Soundness: Satisfied"
                 : "Weak Soundness: Not Satisfied"
         });
+        
+        console.log(buildSplitJoinPairs(graph));
 
         let kmax = 0;
         let source = null;
@@ -1227,8 +1229,6 @@ export class Soundness {
                     });
                 }
             }
-
-            console.log(findSplitJoinPairs(rdlt));
 
             criteria.push({
                 pass: isImpedanceFreeLValues,
