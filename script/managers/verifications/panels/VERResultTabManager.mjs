@@ -54,6 +54,21 @@ export default class VERResultTabManager {
   }
 
   #initializeView() {
+    const kmaxPAEButton = this.#rootElement.querySelector(
+      "button[data-subaction='simulate-kmax-pae']",
+    );
+    if (this.#parentManager.canSimulateKmaxPAE) {
+      kmaxPAEButton.classList.remove("hidden");
+      kmaxPAEButton.addEventListener("click", async () => {
+        kmaxPAEButton.disabled = true;
+        try {
+          await this.#parentManager.simulateKmaxPAE();
+        } finally {
+          kmaxPAEButton.disabled = false;
+        }
+      });
+    }
+
     this.#view.conclusion.root =
       this.#rootElement.querySelector(".status-chip");
     this.#view.conclusion.title =

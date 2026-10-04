@@ -350,13 +350,19 @@ export default class WorkspaceManager {
         );
     }
 
-    showVerificationResults(result, visualModel, activityProfile = null) {
-      return new VerificationsResultManager(
-        this.context,
+    showVerificationResults(
         result,
         visualModel,
-        activityProfile
-      );
+        activityProfile = null,
+        soundnessConfig = null,
+    ) {
+        return new VerificationsResultManager(
+            this.context,
+            result,
+            visualModel,
+                    activityProfile,
+                    soundnessConfig,
+        );
     }
 
     /**

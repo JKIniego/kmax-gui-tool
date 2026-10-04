@@ -5,6 +5,7 @@ import { BaseModelDrawingManager } from "../drawing/BaseModelDrawingManager.mjs"
 import ModelContext from "../model/ModelContext.mjs";
 import VERResultTabManager from "./panels/VERResultTabManager.mjs";
 import { VERSubworkspaceManager } from "./VERSubworkspaceManager.mjs";
+import { PAESimulationManager } from "../activity/extraction/PAESimulationManager.mjs";
 
 export class VerificationsResultManager {
   /** @type {ModelContext} */
@@ -49,6 +50,9 @@ export class VerificationsResultManager {
   /** @type {VisualRDLTModel} */
   #modelSnapshot;
 
+  /** @type {{ source: number, sink: number } | null} */
+  #soundnessConfig;
+
   /** @type {VERSubworkspaceManager} */
   #subworkspaceManager;
 
@@ -69,12 +73,19 @@ export class VerificationsResultManager {
    * @param {VerificationResultData} result
    * @param {*} visualModelSnapshot
    */
-  constructor(context, result, visualModelSnapshot, activityProfile = null) {
+  constructor(
+    context,
+    result,
+    visualModelSnapshot,
+    activityProfile = null,
+    soundnessConfig = null,
+  ) {
     this.context = context;
     this.id = generateUniqueID();
     this.result = result;
     this.#modelSnapshot = visualModelSnapshot;
     this.activityProfile = activityProfile;
+    this.#soundnessConfig = soundnessConfig;
 
     this.#initialize();
   }
@@ -137,6 +148,56 @@ export class VerificationsResultManager {
     }
 
     this.displayInstanceResult(0);
+  }
+
+  get canSimulateKmaxPAE() {
+    return this.#soundnessConfig !== null;
+  }
+
+  async simulateKmaxPAE() {
+    if (!this.#soundnessConfig) return;
+
+    const { source, sink } = this.#soundnessConfig;
+    const paeManager = new PAESimulationManager(
+      this.context,
+      { name: "kmax-soundness PAE", source, sink },
+      this.#modelSnapshot,
+    );
+    await paeManager.ready;
+
+    const conclusion = paeManager.getConclusion();
+    const competingArcUIDs = [...paeManager.getCompetingArcUIDs()];
+    const interruptingArcUIDs = [...paeManager.getInterruptingArcUIDs()];
+    const entries = paeManager.isParallel
+      ? paeManager.getProcessEntriesForGroup(0)
+      : paeManager.getProcessEntries();
+
+    if (entries.length === 0) {
+      alert(`PAE could not produce any activities.\n\n${conclusion.title}: ${conclusion.description}`);
+      return;
+    }
+
+    const parallelGroupId = crypto.randomUUID();
+    const activities = entries.map((entry, index) => new Activity({
+      name: entries.length === 1
+        ? "kmax-soundness PAE"
+        : `kmax-soundness PAE — Process ${index + 1}`,
+      source,
+      sink,
+      origin: "pae",
+      parallelGroupId,
+      conclusion,
+      profile: entry.activityProfile,
+      tor: {},
+      competingArcUIDs,
+      interruptingArcUIDs,
+    }));
+
+    if (activities.length > 1) {
+      this.context.managers.workspace.startParallelActivitySimulation(activities);
+    } else {
+      this.context.managers.workspace.startActivitySimulation(activities[0]);
+    }
   }
 
   getVertexIdentifier(vertexUID) {

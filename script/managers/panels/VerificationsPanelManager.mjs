@@ -217,6 +217,8 @@ export default class VerificationsPanelManager {
       this.context.managers.workspace.showVerificationResults(
         result,
         modelSnapshot,
+        null,
+        notion === "kmax" ? { source: Number(source), sink: Number(sink) } : null,
       );
     });
   }
