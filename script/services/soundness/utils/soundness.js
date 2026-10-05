@@ -1241,28 +1241,16 @@ export class Soundness {
                 }
             }
 
-            const isPartOfCycle = splitVertex => {
-                const visited = new Set();
-                const pending = rdlt.edges
-                    .filter(edge => edge.from.id === splitVertex.id)
-                    .map(edge => edge.to.id);
-
-                while (pending.length > 0) {
-                    const vertexId = pending.pop();
-                    if (vertexId === splitVertex.id) return true;
-                    if (visited.has(vertexId)) continue;
-                    visited.add(vertexId);
-
-                    rdlt.edges
-                        .filter(edge => edge.from.id === vertexId)
-                        .forEach(edge => pending.push(edge.to.id));
-                }
-
-                return false;
-            };
+            const cycleDetector = new Cycle(rdlt.edges.map((edge, index) => ({
+                'r-id': edge.id ?? index,
+                arc: `${edge.from.id}, ${edge.to.id}`
+            })));
+            const cycleVertices = new Set(
+                cycleDetector.findCycles(cycleDetector.graph).flatMap(cycle => cycle.flat())
+            );
 
             const esplits = [...splitVertices.values()]
-                .filter(splitVertex => !isPartOfCycle(splitVertex))
+                .filter(splitVertex => !cycleVertices.has(splitVertex.id))
                 .reduce((count, splitVertex) => {
                     const originalVertex = graph.vertices.find(vertex =>
                         vertex.name === splitVertex.name ||
