@@ -1175,24 +1175,26 @@ export class Soundness {
         const inputModel = matrixInput?.input_rdlt?.model;
         const originalArcs = inputModel?.arcs || [];
         const originalComponents = inputModel?.components || [];
+        let traversalCache = null;
+
+        if (originalArcs.length > 0 && originalComponents.length > 0) {
+            const vertexMap = buildVertexMap(originalComponents);
+            const arcMap = buildArcMap(originalArcs);
+            traversalCache = {
+                vertexMap,
+                arcs: originalArcs,
+                arcMap,
+                arcsMatrix: buildArcsAdjacencyMatrix(originalArcs),
+                rbsMatrix: buildRBSMatrix(vertexMap, originalArcs),
+            };
+        }
 
         // The model must allow kmax-number of activities to initiate, traverse,
         // and terminate, similar to the WF-Net definition. This creates the need
         // to require every activity to terminate properly explicitly. With this,
         // the kmax number of activities to be completed can be determined by the
         // number of outgoing arcs from the source s.
-        if (source && originalArcs.length > 0) {
-            const vertexMap = buildVertexMap(originalComponents);
-            const arcMap = buildArcMap(originalArcs);
-            const arcsMatrix = buildArcsAdjacencyMatrix(originalArcs);
-            const rbsMatrix = buildRBSMatrix(vertexMap, originalArcs);
-            const cache = {
-                vertexMap,
-                arcs: originalArcs,
-                arcMap,
-                arcsMatrix,
-                rbsMatrix,
-            };
+        if (source && traversalCache) {
             const states = {
                 T: {},
                 CTIndicator: {},
@@ -1203,7 +1205,7 @@ export class Soundness {
 
             const outgoingArcs = originalArcs.filter(arc => arc.fromVertexUID === source.id);
             for (const arc of outgoingArcs) {
-                const isUnconstrained = checkArc({ arcUID: arc.uid }, states, cache);
+                const isUnconstrained = checkArc({ arcUID: arc.uid }, states, traversalCache);
                 
                 if (isUnconstrained) kmax += 1;
             }
@@ -1228,7 +1230,67 @@ export class Soundness {
                 }
             }
             
-            console.log(buildSplitJoinPairs(rdlt));
+            const splitJoinPairs = buildSplitJoinPairs(rdlt);
+            console.log(splitJoinPairs);
+
+            const splitVertices = new Map();
+            for (const paths of splitJoinPairs.siblingPaths.values()) {
+                for (const path of paths) {
+                    const splitVertex = path[0];
+                    if (splitVertex) splitVertices.set(splitVertex.id, splitVertex);
+                }
+            }
+
+            const isPartOfCycle = splitVertex => {
+                const visited = new Set();
+                const pending = rdlt.edges
+                    .filter(edge => edge.from.id === splitVertex.id)
+                    .map(edge => edge.to.id);
+
+                while (pending.length > 0) {
+                    const vertexId = pending.pop();
+                    if (vertexId === splitVertex.id) return true;
+                    if (visited.has(vertexId)) continue;
+                    visited.add(vertexId);
+
+                    rdlt.edges
+                        .filter(edge => edge.from.id === vertexId)
+                        .forEach(edge => pending.push(edge.to.id));
+                }
+
+                return false;
+            };
+
+            const esplits = [...splitVertices.values()]
+                .filter(splitVertex => !isPartOfCycle(splitVertex))
+                .reduce((count, splitVertex) => {
+                    const originalVertex = graph.vertices.find(vertex =>
+                        vertex.name === splitVertex.name ||
+                        vertex.name === splitVertex.id ||
+                        String(vertex.id) === String(splitVertex.id)
+                    );
+                    if (!originalVertex || !traversalCache) return count;
+
+                    const states = {
+                        T: {},
+                        CTIndicator: {},
+                        path: [originalVertex.id],
+                        activityProfile: {},
+                        tor: {}
+                    };
+                    const outgoingArcs = originalArcs.filter(
+                        arc => arc.fromVertexUID === originalVertex.id
+                    );
+
+                    console.log(outgoingArcs.filter(arc =>
+                        checkArc({ arcUID: arc.uid }, states, traversalCache)
+                    ));
+
+                    return count + outgoingArcs.filter(arc =>
+                        checkArc({ arcUID: arc.uid }, states, traversalCache)
+                    ).length;
+                }, 0);
+            console.log(`esplits = ${esplits}`);
 
             criteria.push({
                 pass: isImpedanceFreeLValues,
