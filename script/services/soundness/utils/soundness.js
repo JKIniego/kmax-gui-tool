@@ -1327,10 +1327,10 @@ export class Soundness {
                     ? (constraints.has("") ? "MIX" : "AND")
                     : "OR";
 
-                if (joinType === "OR") {
-                    separatingJoins++;
-                } else {
+                if (joinType === "AND") {
                     mergingJoins++;
+                } else {
+                    separatingJoins++;
                 }
             }
 
