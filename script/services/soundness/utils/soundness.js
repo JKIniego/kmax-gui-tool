@@ -1237,7 +1237,7 @@ export class Soundness {
                     : `Impedance-free L-values (L${level}): Not satisfied`
             });
 
-            
+
             
             const splitJoinPairs = buildSplitJoinPairs(rdlt);
             console.log(splitJoinPairs);
@@ -1258,9 +1258,9 @@ export class Soundness {
                 cycleDetector.findCycles(cycleDetector.graph).flatMap(cycle => cycle.flat())
             );
 
-            const esplits = [...splitVertices.values()]
-                .filter(splitVertex => !cycleVertices.has(splitVertex.id))
-                .reduce((count, splitVertex) => {
+            const eligibleSplitVertices = [...splitVertices.values()]
+                .filter(splitVertex => !cycleVertices.has(splitVertex.id));
+            const esplits = eligibleSplitVertices.reduce((count, splitVertex) => {
                     const originalVertex = graph.vertices.find(vertex =>
                         vertex.name === splitVertex.name ||
                         vertex.name === splitVertex.id ||
@@ -1288,6 +1288,39 @@ export class Soundness {
                     ).length;
                 }, 0);
             console.log(`esplits = ${esplits}`);
+
+            const relatedJoinVertices = new Map();
+            for (const paths of splitJoinPairs.siblingPaths.values()) {
+                const splitVertex = paths[0]?.[0];
+                const joinVertex = paths[0]?.[paths[0].length - 1];
+                if (!splitVertex || !joinVertex ||
+                    !eligibleSplitVertices.some(vertex => vertex.id === splitVertex.id)) {
+                    continue;
+                }
+                relatedJoinVertices.set(joinVertex.id, joinVertex);
+            }
+
+            let mergingJoins = 0;
+            let separatingJoins = 0;
+            for (const joinVertex of relatedJoinVertices.values()) {
+                const incomingArcs = rdlt.edges.filter(edge => edge.to.id === joinVertex.id);
+                const constraints = new Set(incomingArcs.map(edge => edge.constraint ?? ""));
+
+                console.log("Joins:", constraints);
+
+                const joinType = constraints.size > 1
+                    ? (constraints.has("") ? "MIX" : "AND")
+                    : "OR";
+
+                if (joinType === "OR") {
+                    separatingJoins++;
+                } else {
+                    mergingJoins++;
+                }
+            }
+
+            console.log(`Merging joins = ${mergingJoins}`);
+            console.log(`Separating joins = ${separatingJoins}`);
 
             level++;
         }
