@@ -1259,7 +1259,22 @@ export class Soundness {
             );
 
             const eligibleSplitVertices = [...splitVertices.values()]
-                .filter(splitVertex => !cycleVertices.has(splitVertex.id));
+                .filter(splitVertex => {
+                    const outgoingConstraints = new Set(
+                        rdlt.edges
+                            .filter(edge => edge.from.id === splitVertex.id)
+                            .map(edge => edge.constraint ?? "")
+                    );
+                    const hasMixedConstraints = outgoingConstraints.size > 1 &&
+                        (outgoingConstraints.has("") || outgoingConstraints.has("ε") ||
+                            outgoingConstraints.has("epsilon") || outgoingConstraints.has("E")) &&
+                        [...outgoingConstraints].some(constraint =>
+                            constraint !== "" && constraint !== "ε" &&
+                            constraint !== "epsilon" && constraint !== "E"
+                        );
+
+                    return !cycleVertices.has(splitVertex.id) && !hasMixedConstraints;
+                });
             const esplits = eligibleSplitVertices.reduce((count, splitVertex) => {
                     const originalVertex = graph.vertices.find(vertex =>
                         vertex.name === splitVertex.name ||
