@@ -1229,6 +1229,15 @@ export class Soundness {
                     });
                 }
             }
+
+            criteria.push({
+                pass: isImpedanceFreeLValues,
+                description: isImpedanceFreeLValues
+                    ? `Impedance-free L-values (L${level}): Satisfied`
+                    : `Impedance-free L-values (L${level}): Not satisfied`
+            });
+
+            
             
             const splitJoinPairs = buildSplitJoinPairs(rdlt);
             console.log(splitJoinPairs);
@@ -1279,13 +1288,6 @@ export class Soundness {
                     ).length;
                 }, 0);
             console.log(`esplits = ${esplits}`);
-
-            criteria.push({
-                pass: isImpedanceFreeLValues,
-                description: isImpedanceFreeLValues
-                    ? `Impedance-free L-values (L${level}): Satisfied`
-                    : `Impedance-free L-values (L${level}): Not satisfied`
-            });
 
             level++;
         }
