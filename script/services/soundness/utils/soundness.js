@@ -1340,6 +1340,15 @@ export class Soundness {
             console.log(`Merging joins = ${mergingJoins} || Calculated value = ${Math.ceil(esplits / 2) - kmax + 1}`);
             console.log(`Separating joins = ${separatingJoins} || Calculated value = ${kmax - 1}`);
 
+            const isKmaxEnsuring = isSatisfiedMergingJoins && isSatisfiedSeparatingJoins;
+
+            criteria.push({
+                pass: isKmaxEnsuring,
+                description: isKmaxEnsuring
+                    ? `kᵐᵃˣ-ensuring (L${level}): Satisfied`
+                    : `kᵐᵃˣ-ensuring (L${level}): Not satisfied`
+            });
+
             level++;
         }
 
