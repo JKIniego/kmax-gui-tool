@@ -1319,8 +1319,11 @@ export class Soundness {
                 }
             }
 
-            console.log(`Merging joins = ${mergingJoins}`);
-            console.log(`Separating joins = ${separatingJoins}`);
+            const isSatisfiedMergingJoins = mergingJoins == Math.ceil(esplits / 2) - kmax + 1;
+            const isSatisfiedSeparatingJoins = separatingJoins <= kmax - 1;
+
+            console.log(`Merging joins = ${mergingJoins} || Calculated value = ${Math.ceil(esplits / 2) - kmax + 1}`);
+            console.log(`Separating joins = ${separatingJoins} || Calculated value = ${kmax - 1}`);
 
             level++;
         }
