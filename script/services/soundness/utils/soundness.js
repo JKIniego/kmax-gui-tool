@@ -1360,7 +1360,7 @@ export class Soundness {
             pass,
             message: pass
                 ? `The model is kᵐᵃˣ-sound (kᵐᵃˣ = ${kmax})`
-                : "kᵐᵃˣ-soundness check was inconclusive",
+                : `kᵐᵃˣ-soundness check was inconclusive (kᵐᵃˣ = ${kmax})`,
             description: pass
                 ? "The model satisfies all kᵐᵃˣ-soundness criteria."
                 : "The model does not satisfy all kᵐᵃˣ-soundness criteria.",
