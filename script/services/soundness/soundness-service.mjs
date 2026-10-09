@@ -616,19 +616,11 @@ export function verifySoundness(model, source, sink, soundnessNotion) {
         return { vertices: vertexUIDs, arcs: arcUIDs };
     }
 
-    let kmaxInstance = null;
     if (soundnessNotion === 'classical' && soundnessPass) {
         theoreticalNote = {
             theorem: "Theorem 8",
             statement: "If R is classically sound, then it is kᵐᵃˣ-sound, where R has one traversable arc from the source vertex and R is impedance-free and kᵐᵃˣ-ensuring, where kᵐᵃˣ = 1.",
             explanation: ""
-        };
-
-        const kmaxResult = verifySoundness(model, source, sink, 'kmax');
-        const kmaxMainInstance = kmaxResult.instances[0];
-        kmaxInstance = {
-            ...kmaxMainInstance,
-            name: "kᵐᵃˣ Check"
         };
     }
 
@@ -990,7 +982,6 @@ export function verifySoundness(model, source, sink, soundnessNotion) {
                 },
             },
             ...lazyInstances,
-            ...(kmaxInstance ? [kmaxInstance] : [])
         ]
         
     };

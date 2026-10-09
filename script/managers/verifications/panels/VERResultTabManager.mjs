@@ -54,6 +54,21 @@ export default class VERResultTabManager {
   }
 
   #initializeView() {
+    const kmaxCheckButton = this.#rootElement.querySelector(
+      "button[data-subaction='check-kmax']",
+    );
+    if (this.#parentManager.canCheckKmax) {
+      kmaxCheckButton.classList.remove("hidden");
+      kmaxCheckButton.addEventListener("click", () => {
+        kmaxCheckButton.disabled = true;
+        try {
+          this.#parentManager.checkKmax();
+        } finally {
+          kmaxCheckButton.disabled = false;
+        }
+      });
+    }
+
     const kmaxPAEButton = this.#rootElement.querySelector(
       "button[data-subaction='simulate-kmax-pae']",
     );

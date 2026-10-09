@@ -6,6 +6,7 @@ import ModelContext from "../model/ModelContext.mjs";
 import VERResultTabManager from "./panels/VERResultTabManager.mjs";
 import { VERSubworkspaceManager } from "./VERSubworkspaceManager.mjs";
 import { PAESimulationManager } from "../activity/extraction/PAESimulationManager.mjs";
+import { verifySoundness } from "../../services/soundness/soundness-service.mjs";
 
 export class VerificationsResultManager {
   /** @type {ModelContext} */
@@ -50,7 +51,7 @@ export class VerificationsResultManager {
   /** @type {VisualRDLTModel} */
   #modelSnapshot;
 
-  /** @type {{ source: number, sink: number } | null} */
+  /** @type {{ source: number, sink: number, notion: "classical" | "kmax" } | null} */
   #soundnessConfig;
 
   /** @type {VERSubworkspaceManager} */
@@ -151,7 +152,31 @@ export class VerificationsResultManager {
   }
 
   get canSimulateKmaxPAE() {
-    return this.#soundnessConfig !== null;
+    return this.#soundnessConfig?.notion === "kmax";
+  }
+
+  get canCheckKmax() {
+    return this.#soundnessConfig?.notion === "classical"
+      && this.result.instances[0]?.evaluation?.conclusion?.pass === true;
+  }
+
+  checkKmax() {
+    if (!this.canCheckKmax || !this.#soundnessConfig) return;
+
+    const { source, sink } = this.#soundnessConfig;
+    const result = verifySoundness(
+      this.#modelSnapshot.toSimpleModel(),
+      source,
+      sink,
+      "kmax",
+    );
+    result.title = "kᵐᵃˣ Soundness Verification";
+    this.context.managers.workspace.showVerificationResults(
+      result,
+      this.#modelSnapshot,
+      null,
+      { source, sink, notion: "kmax" },
+    );
   }
 
   async simulateKmaxPAE() {

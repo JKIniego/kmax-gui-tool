@@ -218,7 +218,9 @@ export default class VerificationsPanelManager {
         result,
         modelSnapshot,
         null,
-        notion === "kmax" ? { source: Number(source), sink: Number(sink) } : null,
+        ["classical", "kmax"].includes(notion)
+          ? { source: Number(source), sink: Number(sink), notion }
+          : null,
       );
     });
   }
