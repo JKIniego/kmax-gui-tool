@@ -15,20 +15,21 @@ export default class ImportManager {
     }
 
     async importRDLTFile() {
-        const raw = await this.#importFileThenRead();
-        if(!raw) return;
+        const fileData = await this.#importFileThenRead();
+        if(!fileData) return;
 
-        const visualModel = RDLTImportManager.loadRDLTModel(raw);
+        const modelName = fileData.name.replace(/\.[^.]+$/, "");
+        const visualModel = RDLTImportManager.loadRDLTModel(fileData.text, modelName);
         if(!visualModel) return;
 
         App.addContext(visualModel);
     }
 
     async importActivityFile() {
-        const raw = await this.#importFileThenRead();
-        if(!raw) return;
+        const fileData = await this.#importFileThenRead();
+        if(!fileData) return;
 
-        const activity = ActivityImportManager.loadActivity(raw);
+        const activity = ActivityImportManager.loadActivity(fileData.text);
         if(!activity) return;
 
         this.context.managers.activities.addActivity(activity);
@@ -49,7 +50,7 @@ export default class ImportManager {
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     const text = e.target.result;
-                    resolve(text);
+                    resolve({ text, name: file.name });
                 };
 
                 reader.readAsText(file);
@@ -60,5 +61,4 @@ export default class ImportManager {
         });
     }
 }
-
 
