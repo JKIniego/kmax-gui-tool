@@ -306,7 +306,26 @@ export function verifySoundness(model, source, sink, soundnessNotion) {
                 const transformedArcMap = utils.transformArcMap(arcMap);
 
                 kmaxResult.violations.forEach(violation => {
-                    if (violation.type === "edge" || violation.type === "asoy-edge") {
+                    if (violation.type === "vertex") {
+                        const [mappedVertex] = mapVerticesToUIDs(
+                            [{ id: String(violation.id ?? "") }],
+                            vertexMap
+                        );
+
+                        if (mappedVertex.uid === null) {
+                            console.warn(`No UID found for kmax violation vertex: ${violation.id}`);
+                            return;
+                        }
+
+                        if (!soundnessViolation.vertices.includes(mappedVertex.uid)) {
+                            soundnessViolation.vertices.push(mappedVertex.uid);
+                        }
+
+                        const existingRemark = soundnessViolationRemarks.vertices[mappedVertex.uid];
+                        soundnessViolationRemarks.vertices[mappedVertex.uid] = existingRemark
+                            ? `${existingRemark}; ${violation.message}`
+                            : violation.message;
+                    } else if (violation.type === "edge" || violation.type === "asoy-edge") {
                         const arcIdentifiers = (violation.id || violation.arc || "")
                             .replace(/[()]/g, '')
                             .split(', ')

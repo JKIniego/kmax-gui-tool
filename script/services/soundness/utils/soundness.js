@@ -1156,6 +1156,7 @@ export class Soundness {
         // for deadlock tolerance that ensures proper termination regardless of
         // liveliness. Hence, it can be used to check for kmax-soundness of an RDLT.
         const weakResult = Soundness.checkWeakSound(graph, evsa, matrixInput);
+        violations.push(...(weakResult.violations || []));
         criteria.push({
             pass: weakResult.pass,
             description: weakResult.pass
