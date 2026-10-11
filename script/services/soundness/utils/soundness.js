@@ -1164,6 +1164,16 @@ export class Soundness {
                 : "Weak Soundness: Not Satisfied"
         });
 
+        if (!weakResult.pass) {
+            return {
+                ...weakResult,
+                message: `kᵐᵃˣ-soundness check was inconclusive`,
+                description: "The model does not satisfy all kᵐᵃˣ-soundness criteria.",
+                criteria,
+                violations
+            };
+        }
+
         let kmax = 0;
         let source = null;
 

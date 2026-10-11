@@ -152,7 +152,8 @@ export class VerificationsResultManager {
   }
 
   get canSimulateKmaxPAE() {
-    return this.#soundnessConfig?.notion === "kmax";
+    return this.#soundnessConfig?.notion === "kmax"
+      && this.result.instances[0]?.evaluation?.criteria?.[0]?.pass !== false;
   }
 
   get canCheckKmax() {
