@@ -1164,6 +1164,9 @@ export class Soundness {
                 : "Weak Soundness: Not Satisfied"
         });
 
+        // Based on the pseudocode, it returns false the moment weak soundness check
+        // did not pass. Hence, it will return the violating components from the weak
+        // soundness module of Ejercito
         if (!weakResult.pass) {
             return {
                 ...weakResult,
