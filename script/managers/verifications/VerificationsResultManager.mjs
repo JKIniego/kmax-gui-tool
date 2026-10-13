@@ -51,7 +51,7 @@ export class VerificationsResultManager {
   /** @type {VisualRDLTModel} */
   #modelSnapshot;
 
-  /** @type {{ source: number, sink: number, notion: "classical" | "kmax" } | null} */
+  /** @type {{ source: number, sink: number, notion: "classical" | "weak" | "kmax" } | null} */
   #soundnessConfig;
 
   /** @type {VERSubworkspaceManager} */
@@ -157,7 +157,7 @@ export class VerificationsResultManager {
   }
 
   get canCheckKmax() {
-    return this.#soundnessConfig?.notion === "classical"
+    return ["classical", "weak"].includes(this.#soundnessConfig?.notion)
       && this.result.instances[0]?.evaluation?.conclusion?.pass === true;
   }
 

@@ -218,7 +218,7 @@ export default class VerificationsPanelManager {
         result,
         modelSnapshot,
         null,
-        ["classical", "kmax"].includes(notion)
+        ["classical", "weak", "kmax"].includes(notion)
           ? { source: Number(source), sink: Number(sink), notion }
           : null,
       );
