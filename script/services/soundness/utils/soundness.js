@@ -1147,7 +1147,7 @@ export class Soundness {
      *   visualizationData: Object
      * }}
      */
-    static checkkmaxSound(graph, evsa, matrixInput) {
+    static checkkmaxSound(graph, evsa, matrixInput, kmaxInstance = null) {
         const criteria = [];
         const violations = [];
         let level = 1;
@@ -1208,7 +1208,9 @@ export class Soundness {
         // to require every activity to terminate properly explicitly. With this,
         // the kmax number of activities to be completed can be determined by the
         // number of outgoing arcs from the source s.
-        if (source && traversalCache) {
+        if (kmaxInstance !== null) {
+            kmax = kmaxInstance;
+        } else if (source && traversalCache) {
             const states = {
                 T: {},
                 CTIndicator: {},

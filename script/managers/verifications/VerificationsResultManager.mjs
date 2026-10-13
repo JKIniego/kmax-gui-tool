@@ -170,6 +170,7 @@ export class VerificationsResultManager {
       source,
       sink,
       "kmax",
+      1,
     );
     result.title = "kᵐᵃˣ Soundness Verification";
     this.context.managers.workspace.showVerificationResults(

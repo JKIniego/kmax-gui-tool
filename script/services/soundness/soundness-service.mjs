@@ -122,7 +122,7 @@ export function mapGUIModelToSoundness(model, source, sink){
     return {rdltGraph, combinedEvsa};
 }
 
-export function verifySoundness(model, source, sink, soundnessNotion) {
+export function verifySoundness(model, source, sink, soundnessNotion, kmaxInstance = null) {
     console.log({ model, source, sink, soundnessNotion });
     
     const arcMap = buildArcMap(model.arcs);
@@ -294,7 +294,12 @@ export function verifySoundness(model, source, sink, soundnessNotion) {
                 R1,
                 R2
             };
-            const kmaxResult = Soundness.checkkmaxSound(rdltGraph, combinedEvsa, matrixInputSound);
+            const kmaxResult = Soundness.checkkmaxSound(
+                rdltGraph,
+                combinedEvsa,
+                matrixInputSound,
+                kmaxInstance
+            );
             console.timeEnd("kmax Soundness Verification");
 
             soundnessPass = kmaxResult.pass;
