@@ -1131,9 +1131,8 @@ export class Soundness {
      *      - Merging joins: Jm = ceil(|Esplit| / 2) - kmax + 1
      *      - Separating joins: Js = kmax - 1
      *
-     * The criteria array returned ALWAYS contains all three visible entries
-     * (Deadlock Tolerance, Impedance-Free L-Values, kmax-Ensuring)
-     * so the UI can show every condition and its status regardless of outcome.
+     * The criteria array includes kmax-Ensuring only for levels that have
+     * generated split-join pairs.
      *
      * @param {Graph} graph - The original input RDLT R.
      * @param {Graph[]} evsa - Array containing [R1, R2, ...] vertex-simplified RDLTs.
@@ -1257,6 +1256,11 @@ export class Soundness {
             
             const splitJoinPairs = buildSplitJoinPairs(rdlt);
             console.log(splitJoinPairs);
+
+            if (splitJoinPairs.siblingPaths.size === 0) {
+                level++;
+                continue;
+            }
 
             const splitVertices = new Map();
             for (const paths of splitJoinPairs.siblingPaths.values()) {
