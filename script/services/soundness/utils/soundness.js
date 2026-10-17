@@ -1127,9 +1127,10 @@ export class Soundness {
      *   1. Deadlock Tolerance (Weak Soundness) – verified via WRSVA (loop-safe NCAs,
      *      safe CAs, weakened JOIN-safe L-values, and escape contraction paths).
      *   2. Impedance-Free L-values – all arc reusability limits satisfy L(x, y) >= kmax.
-     *   3. kmax-Ensuring Gateway Balance – split-join topology satisfies:
+     *   3. kmax-Ensuring Gateway Balance – each generated split-join pair's
+     *      subgraph satisfies:
      *      - Merging joins: Jm = ceil(|Esplit| / 2) - kmax + 1
-     *      - Separating joins: Js = kmax - 1
+     *      - Separating joins: Js <= kmax - 1
      *
      * The criteria array includes kmax-Ensuring only for levels that have
      * generated split-join pairs.
@@ -1262,26 +1263,54 @@ export class Soundness {
                 continue;
             }
 
-            const splitVertices = new Map();
-            for (const paths of splitJoinPairs.siblingPaths.values()) {
+            for (const [pairKey, paths] of splitJoinPairs.siblingPaths) {
+                const pairVertices = new Map();
                 for (const path of paths) {
-                    const splitVertex = path[0];
-                    if (splitVertex) splitVertices.set(splitVertex.id, splitVertex);
+                    for (const vertex of path) {
+                        if (vertex) pairVertices.set(vertex.id, vertex);
+                    }
                 }
-            }
 
-            const cycleDetector = new Cycle(rdlt.edges.map((edge, index) => ({
-                'r-id': edge.id ?? index,
-                arc: `${edge.from.id}, ${edge.to.id}`
-            })));
-            const cycleVertices = new Set(
-                cycleDetector.findCycles(cycleDetector.graph).flatMap(cycle => cycle.flat())
-            );
+                if (pairVertices.size === 0) {
+                    criteria.push({
+                        pass: false,
+                        description: `kᵐᵃˣ-ensuring (L${level}, ${pairKey}): Not satisfied`
+                    });
+                    continue;
+                }
 
-            const eligibleSplitVertices = [...splitVertices.values()]
-                .filter(splitVertex => {
+                const pairVertexIds = new Set(pairVertices.keys());
+                const pairEdges = rdlt.edges.filter(edge =>
+                    pairVertexIds.has(edge.from.id) && pairVertexIds.has(edge.to.id)
+                );
+                const originalVerticesByPairId = new Map();
+                for (const pairVertex of pairVertices.values()) {
+                    const originalVertex = graph.vertices.find(vertex =>
+                        vertex.name === pairVertex.name ||
+                        vertex.name === pairVertex.id ||
+                        String(vertex.id) === String(pairVertex.id)
+                    );
+                    if (originalVertex) {
+                        originalVerticesByPairId.set(pairVertex.id, originalVertex);
+                    }
+                }
+                const originalPairVertexIds = new Set(
+                    [...originalVerticesByPairId.values()].map(vertex => String(vertex.id))
+                );
+                const cycleDetector = new Cycle(pairEdges.map((edge, index) => ({
+                    'r-id': edge.id ?? index,
+                    arc: `${edge.from.id}, ${edge.to.id}`
+                })));
+                const cycleVertices = new Set(
+                    cycleDetector.findCycles(cycleDetector.graph).flatMap(cycle => cycle.flat())
+                );
+
+                const splitVertices = [...pairVertices.values()].filter(vertex =>
+                    pairEdges.filter(edge => edge.from.id === vertex.id).length > 1
+                );
+                const eligibleSplitVertices = splitVertices.filter(splitVertex => {
                     const outgoingConstraints = new Set(
-                        rdlt.edges
+                        pairEdges
                             .filter(edge => edge.from.id === splitVertex.id)
                             .map(edge => edge.constraint ?? "")
                     );
@@ -1295,79 +1324,69 @@ export class Soundness {
 
                     return !cycleVertices.has(splitVertex.id) && !hasMixedConstraints;
                 });
-            const esplits = eligibleSplitVertices.reduce((count, splitVertex) => {
-                    const originalVertex = graph.vertices.find(vertex =>
-                        vertex.name === splitVertex.name ||
-                        vertex.name === splitVertex.id ||
-                        String(vertex.id) === String(splitVertex.id)
-                    );
-                    if (!originalVertex || !traversalCache) return count;
 
+                let esplits = 0;
+                for (const splitVertex of eligibleSplitVertices) {
+                    const originalSplitVertex = originalVerticesByPairId.get(splitVertex.id);
+                    if (!originalSplitVertex || !traversalCache) continue;
+
+                    const outgoingArcs = originalArcs.filter(arc =>
+                        String(arc.fromVertexUID) === String(originalSplitVertex.id) &&
+                        originalPairVertexIds.has(String(arc.toVertexUID))
+                    );
                     const states = {
                         T: {},
                         CTIndicator: {},
-                        path: [originalVertex.id],
+                        path: [originalSplitVertex.id],
                         activityProfile: {},
                         tor: {}
                     };
-                    const outgoingArcs = originalArcs.filter(
-                        arc => arc.fromVertexUID === originalVertex.id
-                    );
 
-                    console.log(outgoingArcs.filter(arc =>
-                        checkArc({ arcUID: arc.uid }, states, traversalCache)
-                    ));
-
-                    return count + outgoingArcs.filter(arc =>
+                    esplits += outgoingArcs.filter(arc =>
                         checkArc({ arcUID: arc.uid }, states, traversalCache)
                     ).length;
-                }, 0);
-            console.log(`esplits = ${esplits}`);
-
-            const relatedJoinVertices = new Map();
-            for (const paths of splitJoinPairs.siblingPaths.values()) {
-                const splitVertex = paths[0]?.[0];
-                const joinVertex = paths[0]?.[paths[0].length - 1];
-                if (!splitVertex || !joinVertex ||
-                    !eligibleSplitVertices.some(vertex => vertex.id === splitVertex.id)) {
-                    continue;
                 }
-                relatedJoinVertices.set(joinVertex.id, joinVertex);
-            }
 
-            let mergingJoins = 0;
-            let separatingJoins = 0;
-            for (const joinVertex of relatedJoinVertices.values()) {
-                const incomingArcs = rdlt.edges.filter(edge => edge.to.id === joinVertex.id);
-                const constraints = new Set(incomingArcs.map(edge => edge.constraint ?? ""));
+                let mergingJoins = 0;
+                let separatingJoins = 0;
+                const joinVertices = [...pairVertices.values()].filter(vertex =>
+                    pairEdges.filter(edge => edge.to.id === vertex.id).length > 1
+                );
+                for (const joinVertex of joinVertices) {
+                    const incomingConstraints = new Set(
+                        pairEdges
+                            .filter(edge => edge.to.id === joinVertex.id)
+                            .map(edge => edge.constraint ?? "")
+                    );
+                    const joinType = incomingConstraints.size > 1
+                        ? (incomingConstraints.has("") ? "MIX" : "AND")
+                        : "OR";
 
-                console.log("Joins:", constraints);
-
-                const joinType = constraints.size > 1
-                    ? (constraints.has("") ? "MIX" : "AND")
-                    : "OR";
-
-                if (joinType === "AND") {
-                    mergingJoins++;
-                } else {
-                    separatingJoins++;
+                    if (joinType === "AND") {
+                        mergingJoins++;
+                    } else {
+                        separatingJoins++;
+                    }
                 }
+
+                const expectedMergingJoins = Math.ceil(esplits / 2) - kmax + 1;
+                const isSatisfiedMergingJoins = mergingJoins === expectedMergingJoins;
+                const isSatisfiedSeparatingJoins = separatingJoins <= kmax - 1;
+                const isKmaxEnsuring = isSatisfiedMergingJoins && isSatisfiedSeparatingJoins;
+
+                console.log(
+                    `Split-join pair ${pairKey}: Esplit = ${esplits}, merging joins = ${mergingJoins} ` +
+                    `(expected ${expectedMergingJoins}), separating joins = ${separatingJoins} ` +
+                    `(maximum ${kmax - 1})`
+                );
+
+                criteria.push({
+                    pass: isKmaxEnsuring,
+                    description: isKmaxEnsuring
+                        ? `kᵐᵃˣ-ensuring (L${level}, ${pairKey}): Satisfied`
+                        : `kᵐᵃˣ-ensuring (L${level}, ${pairKey}): Not satisfied`
+                });
             }
-
-            const isSatisfiedMergingJoins = mergingJoins == Math.ceil(esplits / 2) - kmax + 1;
-            const isSatisfiedSeparatingJoins = separatingJoins <= kmax - 1;
-
-            console.log(`Merging joins = ${mergingJoins} || Calculated value = ${Math.ceil(esplits / 2) - kmax + 1}`);
-            console.log(`Separating joins = ${separatingJoins} || Calculated value = ${kmax - 1}`);
-
-            const isKmaxEnsuring = isSatisfiedMergingJoins && isSatisfiedSeparatingJoins;
-
-            criteria.push({
-                pass: isKmaxEnsuring,
-                description: isKmaxEnsuring
-                    ? `kᵐᵃˣ-ensuring (L${level}): Satisfied`
-                    : `kᵐᵃˣ-ensuring (L${level}): Not satisfied`
-            });
 
             level++;
         }
