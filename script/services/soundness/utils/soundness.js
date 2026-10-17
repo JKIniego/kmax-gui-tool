@@ -1255,115 +1255,115 @@ export class Soundness {
 
 
             
-            // const splitJoinPairs = buildSplitJoinPairs(rdlt);
-            // console.log(splitJoinPairs);
+            const splitJoinPairs = buildSplitJoinPairs(rdlt);
+            console.log(splitJoinPairs);
 
-            // const splitVertices = new Map();
-            // for (const paths of splitJoinPairs.siblingPaths.values()) {
-            //     for (const path of paths) {
-            //         const splitVertex = path[0];
-            //         if (splitVertex) splitVertices.set(splitVertex.id, splitVertex);
-            //     }
-            // }
+            const splitVertices = new Map();
+            for (const paths of splitJoinPairs.siblingPaths.values()) {
+                for (const path of paths) {
+                    const splitVertex = path[0];
+                    if (splitVertex) splitVertices.set(splitVertex.id, splitVertex);
+                }
+            }
 
-            // const cycleDetector = new Cycle(rdlt.edges.map((edge, index) => ({
-            //     'r-id': edge.id ?? index,
-            //     arc: `${edge.from.id}, ${edge.to.id}`
-            // })));
-            // const cycleVertices = new Set(
-            //     cycleDetector.findCycles(cycleDetector.graph).flatMap(cycle => cycle.flat())
-            // );
+            const cycleDetector = new Cycle(rdlt.edges.map((edge, index) => ({
+                'r-id': edge.id ?? index,
+                arc: `${edge.from.id}, ${edge.to.id}`
+            })));
+            const cycleVertices = new Set(
+                cycleDetector.findCycles(cycleDetector.graph).flatMap(cycle => cycle.flat())
+            );
 
-            // const eligibleSplitVertices = [...splitVertices.values()]
-            //     .filter(splitVertex => {
-            //         const outgoingConstraints = new Set(
-            //             rdlt.edges
-            //                 .filter(edge => edge.from.id === splitVertex.id)
-            //                 .map(edge => edge.constraint ?? "")
-            //         );
-            //         const hasMixedConstraints = outgoingConstraints.size > 1 &&
-            //             (outgoingConstraints.has("") || outgoingConstraints.has("ε") ||
-            //                 outgoingConstraints.has("epsilon") || outgoingConstraints.has("E")) &&
-            //             [...outgoingConstraints].some(constraint =>
-            //                 constraint !== "" && constraint !== "ε" &&
-            //                 constraint !== "epsilon" && constraint !== "E"
-            //             );
+            const eligibleSplitVertices = [...splitVertices.values()]
+                .filter(splitVertex => {
+                    const outgoingConstraints = new Set(
+                        rdlt.edges
+                            .filter(edge => edge.from.id === splitVertex.id)
+                            .map(edge => edge.constraint ?? "")
+                    );
+                    const hasMixedConstraints = outgoingConstraints.size > 1 &&
+                        (outgoingConstraints.has("") || outgoingConstraints.has("ε") ||
+                            outgoingConstraints.has("epsilon") || outgoingConstraints.has("E")) &&
+                        [...outgoingConstraints].some(constraint =>
+                            constraint !== "" && constraint !== "ε" &&
+                            constraint !== "epsilon" && constraint !== "E"
+                        );
 
-            //         return !cycleVertices.has(splitVertex.id) && !hasMixedConstraints;
-            //     });
-            // const esplits = eligibleSplitVertices.reduce((count, splitVertex) => {
-            //         const originalVertex = graph.vertices.find(vertex =>
-            //             vertex.name === splitVertex.name ||
-            //             vertex.name === splitVertex.id ||
-            //             String(vertex.id) === String(splitVertex.id)
-            //         );
-            //         if (!originalVertex || !traversalCache) return count;
+                    return !cycleVertices.has(splitVertex.id) && !hasMixedConstraints;
+                });
+            const esplits = eligibleSplitVertices.reduce((count, splitVertex) => {
+                    const originalVertex = graph.vertices.find(vertex =>
+                        vertex.name === splitVertex.name ||
+                        vertex.name === splitVertex.id ||
+                        String(vertex.id) === String(splitVertex.id)
+                    );
+                    if (!originalVertex || !traversalCache) return count;
 
-            //         const states = {
-            //             T: {},
-            //             CTIndicator: {},
-            //             path: [originalVertex.id],
-            //             activityProfile: {},
-            //             tor: {}
-            //         };
-            //         const outgoingArcs = originalArcs.filter(
-            //             arc => arc.fromVertexUID === originalVertex.id
-            //         );
+                    const states = {
+                        T: {},
+                        CTIndicator: {},
+                        path: [originalVertex.id],
+                        activityProfile: {},
+                        tor: {}
+                    };
+                    const outgoingArcs = originalArcs.filter(
+                        arc => arc.fromVertexUID === originalVertex.id
+                    );
 
-            //         console.log(outgoingArcs.filter(arc =>
-            //             checkArc({ arcUID: arc.uid }, states, traversalCache)
-            //         ));
+                    console.log(outgoingArcs.filter(arc =>
+                        checkArc({ arcUID: arc.uid }, states, traversalCache)
+                    ));
 
-            //         return count + outgoingArcs.filter(arc =>
-            //             checkArc({ arcUID: arc.uid }, states, traversalCache)
-            //         ).length;
-            //     }, 0);
-            // console.log(`esplits = ${esplits}`);
+                    return count + outgoingArcs.filter(arc =>
+                        checkArc({ arcUID: arc.uid }, states, traversalCache)
+                    ).length;
+                }, 0);
+            console.log(`esplits = ${esplits}`);
 
-            // const relatedJoinVertices = new Map();
-            // for (const paths of splitJoinPairs.siblingPaths.values()) {
-            //     const splitVertex = paths[0]?.[0];
-            //     const joinVertex = paths[0]?.[paths[0].length - 1];
-            //     if (!splitVertex || !joinVertex ||
-            //         !eligibleSplitVertices.some(vertex => vertex.id === splitVertex.id)) {
-            //         continue;
-            //     }
-            //     relatedJoinVertices.set(joinVertex.id, joinVertex);
-            // }
+            const relatedJoinVertices = new Map();
+            for (const paths of splitJoinPairs.siblingPaths.values()) {
+                const splitVertex = paths[0]?.[0];
+                const joinVertex = paths[0]?.[paths[0].length - 1];
+                if (!splitVertex || !joinVertex ||
+                    !eligibleSplitVertices.some(vertex => vertex.id === splitVertex.id)) {
+                    continue;
+                }
+                relatedJoinVertices.set(joinVertex.id, joinVertex);
+            }
 
-            // let mergingJoins = 0;
-            // let separatingJoins = 0;
-            // for (const joinVertex of relatedJoinVertices.values()) {
-            //     const incomingArcs = rdlt.edges.filter(edge => edge.to.id === joinVertex.id);
-            //     const constraints = new Set(incomingArcs.map(edge => edge.constraint ?? ""));
+            let mergingJoins = 0;
+            let separatingJoins = 0;
+            for (const joinVertex of relatedJoinVertices.values()) {
+                const incomingArcs = rdlt.edges.filter(edge => edge.to.id === joinVertex.id);
+                const constraints = new Set(incomingArcs.map(edge => edge.constraint ?? ""));
 
-            //     console.log("Joins:", constraints);
+                console.log("Joins:", constraints);
 
-            //     const joinType = constraints.size > 1
-            //         ? (constraints.has("") ? "MIX" : "AND")
-            //         : "OR";
+                const joinType = constraints.size > 1
+                    ? (constraints.has("") ? "MIX" : "AND")
+                    : "OR";
 
-            //     if (joinType === "AND") {
-            //         mergingJoins++;
-            //     } else {
-            //         separatingJoins++;
-            //     }
-            // }
+                if (joinType === "AND") {
+                    mergingJoins++;
+                } else {
+                    separatingJoins++;
+                }
+            }
 
-            // const isSatisfiedMergingJoins = mergingJoins == Math.ceil(esplits / 2) - kmax + 1;
-            // const isSatisfiedSeparatingJoins = separatingJoins <= kmax - 1;
+            const isSatisfiedMergingJoins = mergingJoins == Math.ceil(esplits / 2) - kmax + 1;
+            const isSatisfiedSeparatingJoins = separatingJoins <= kmax - 1;
 
-            // console.log(`Merging joins = ${mergingJoins} || Calculated value = ${Math.ceil(esplits / 2) - kmax + 1}`);
-            // console.log(`Separating joins = ${separatingJoins} || Calculated value = ${kmax - 1}`);
+            console.log(`Merging joins = ${mergingJoins} || Calculated value = ${Math.ceil(esplits / 2) - kmax + 1}`);
+            console.log(`Separating joins = ${separatingJoins} || Calculated value = ${kmax - 1}`);
 
-            // const isKmaxEnsuring = isSatisfiedMergingJoins && isSatisfiedSeparatingJoins;
+            const isKmaxEnsuring = isSatisfiedMergingJoins && isSatisfiedSeparatingJoins;
 
-            // criteria.push({
-            //     pass: isKmaxEnsuring,
-            //     description: isKmaxEnsuring
-            //         ? `kᵐᵃˣ-ensuring (L${level}): Satisfied`
-            //         : `kᵐᵃˣ-ensuring (L${level}): Not satisfied`
-            // });
+            criteria.push({
+                pass: isKmaxEnsuring,
+                description: isKmaxEnsuring
+                    ? `kᵐᵃˣ-ensuring (L${level}): Satisfied`
+                    : `kᵐᵃˣ-ensuring (L${level}): Not satisfied`
+            });
 
             level++;
         }
