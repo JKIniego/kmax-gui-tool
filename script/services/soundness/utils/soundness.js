@@ -1264,12 +1264,58 @@ export class Soundness {
             }
 
             for (const [pairKey, paths] of splitJoinPairs.siblingPaths) {
-                const pairVertices = new Map();
-                for (const path of paths) {
-                    for (const vertex of path) {
-                        if (vertex) pairVertices.set(vertex.id, vertex);
+                const splitVertex = paths[0]?.[0];
+                const joinVertex = paths[0]?.[paths[0].length - 1];
+                if (!splitVertex || !joinVertex) {
+                    criteria.push({
+                        pass: false,
+                        description: `kᵐᵃˣ-ensuring (L${level}, ${pairKey}): Not satisfied`
+                    });
+                    continue;
+                }
+
+                const reachableFromSplit = new Set([String(splitVertex.id)]);
+                const forwardQueue = [String(splitVertex.id)];
+                while (forwardQueue.length > 0) {
+                    const currentId = forwardQueue.shift();
+                    if (currentId === String(joinVertex.id)) continue;
+                    for (const edge of rdlt.edges) {
+                        if (String(edge.from.id) !== currentId) continue;
+                        const nextId = String(edge.to.id);
+                        if (!reachableFromSplit.has(nextId)) {
+                            reachableFromSplit.add(nextId);
+                            forwardQueue.push(nextId);
+                        }
                     }
                 }
+
+                const canReachJoin = new Set([String(joinVertex.id)]);
+                const reverseQueue = [String(joinVertex.id)];
+                while (reverseQueue.length > 0) {
+                    const currentId = reverseQueue.shift();
+                    if (currentId === String(splitVertex.id)) continue;
+                    for (const edge of rdlt.edges) {
+                        if (String(edge.to.id) !== currentId) continue;
+                        const previousId = String(edge.from.id);
+                        if (!canReachJoin.has(previousId)) {
+                            canReachJoin.add(previousId);
+                            reverseQueue.push(previousId);
+                        }
+                    }
+                }
+
+                const pairVertexIds = new Set(
+                    [...reachableFromSplit].filter(vertexId => canReachJoin.has(vertexId))
+                );
+                const pairVertices = new Map(
+                    rdlt.vertices
+                        .filter(vertex => pairVertexIds.has(String(vertex.id)))
+                        .map(vertex => [vertex.id, vertex])
+                );
+                const pairEdges = rdlt.edges.filter(edge =>
+                    pairVertexIds.has(String(edge.from.id)) &&
+                    pairVertexIds.has(String(edge.to.id))
+                );
 
                 if (pairVertices.size === 0) {
                     criteria.push({
@@ -1278,11 +1324,6 @@ export class Soundness {
                     });
                     continue;
                 }
-
-                const pairVertexIds = new Set(pairVertices.keys());
-                const pairEdges = rdlt.edges.filter(edge =>
-                    pairVertexIds.has(edge.from.id) && pairVertexIds.has(edge.to.id)
-                );
                 const originalVerticesByPairId = new Map();
                 for (const pairVertex of pairVertices.values()) {
                     const originalVertex = graph.vertices.find(vertex =>
