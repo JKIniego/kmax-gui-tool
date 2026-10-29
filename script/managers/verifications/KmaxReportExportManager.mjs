@@ -1,23 +1,48 @@
 import { sanitizeForFilename, startBlobDownload } from "../file/utils.mjs";
 
-const PAGE_WIDTH = 595;
-const PAGE_HEIGHT = 842;
-const LEFT_MARGIN = 50;
+const PAGE_WIDTH = 842;
+const PAGE_HEIGHT = 595;
+const LEFT_MARGIN = 56;
 const TABLE_WIDTH = PAGE_WIDTH - LEFT_MARGIN * 2;
+const COLUMN_WIDTHS = [160, 75, 100, 100, 100, 100, 95];
+const HEADER = [
+  "Level / Pair",
+  "E-splits",
+  "Expected Jm",
+  "Counted Jm",
+  "Maximum Js",
+  "Counted Js",
+  "Result",
+];
 const FONT_SIZE = 8;
 const LINE_HEIGHT = 10;
 
 export default class KmaxReportExportManager {
   static export(instance, modelName) {
-    const splitJoins = instance.evaluation?.splitJoins || [];
-    const violatingSplitJoins = splitJoins.filter((splitJoin) => !splitJoin.pass);
-    const rows = violatingSplitJoins.map(
-      (splitJoin) => `L${splitJoin.level}, ${splitJoin.pair || "Unidentified pair"}`,
-    );
+    const evaluation = instance.evaluation || {};
+    const splitJoins = evaluation.splitJoins || [];
+    const rows = splitJoins.map((splitJoin) => [
+      `L${splitJoin.level}, ${splitJoin.pair || "Unidentified pair"}`,
+      this.#value(splitJoin.esplits),
+      this.#value(splitJoin.expectedMergingJoins),
+      this.#value(splitJoin.mergingJoins),
+      this.#value(splitJoin.maxSeparatingJoins),
+      this.#value(splitJoin.separatingJoins),
+      splitJoin.reason || (splitJoin.pass ? "Satisfied" : "Not satisfied"),
+    ]);
+
+    if (rows.length === 0) {
+      rows.push(["No split-join pairs identified", "", "", "", "", "", ""]);
+    }
+
     const pdf = this.#createPdf(rows);
     const filename =
-      `${sanitizeForFilename(modelName || "model")}_kmax-ensuring.pdf`;
+      `${sanitizeForFilename(modelName || "model")}_kmax-ensuring-report.pdf`;
     startBlobDownload(filename, pdf, "application/pdf");
+  }
+
+  static #value(value) {
+    return Number.isFinite(value) ? String(value) : "-";
   }
 
   static #createPdf(rows) {
@@ -32,22 +57,30 @@ export default class KmaxReportExportManager {
       );
     };
 
-    const drawRow = (content, text, top, header = false) => {
-      const wrappedLines = this.#wrapCell(text, TABLE_WIDTH - 8, FONT_SIZE);
-      const lineCount = wrappedLines.length;
+    const drawRow = (content, cells, top, header = false) => {
+      const wrappedCells = cells.map((cell, index) =>
+        this.#wrapCell(cell, COLUMN_WIDTHS[index] - 8, FONT_SIZE),
+      );
+      const lineCount = Math.max(...wrappedCells.map((lines) => lines.length));
       const height = Math.max(24, lineCount * LINE_HEIGHT + 8);
-      const bottom = top - height;
-      content.push(`${LEFT_MARGIN} ${bottom} ${TABLE_WIDTH} ${height} re S`);
+      let x = LEFT_MARGIN;
 
-      for (let lineIndex = 0; lineIndex < wrappedLines.length; lineIndex++) {
-        addText(
-          content,
-          wrappedLines[lineIndex],
-          LEFT_MARGIN + 4,
-          top - 13 - lineIndex * LINE_HEIGHT,
-          FONT_SIZE,
-          header,
-        );
+      for (let index = 0; index < COLUMN_WIDTHS.length; index++) {
+        const width = COLUMN_WIDTHS[index];
+        const bottom = top - height;
+        content.push(`${x} ${bottom} ${width} ${height} re S`);
+
+        for (let lineIndex = 0; lineIndex < wrappedCells[index].length; lineIndex++) {
+          addText(
+            content,
+            wrappedCells[index][lineIndex],
+            x + 4,
+            top - 13 - lineIndex * LINE_HEIGHT,
+            FONT_SIZE,
+            header,
+          );
+        }
+        x += width;
       }
 
       return top - height;
@@ -56,17 +89,22 @@ export default class KmaxReportExportManager {
     const startPage = () => {
       page = [];
       pages.push(page);
-      y = drawRow(page, "Violating Split-Join Pairs", PAGE_HEIGHT - 50, true);
+      addText(page, "kmax-Ensuring Analysis", LEFT_MARGIN, PAGE_HEIGHT - 42, 16, true);
+      y = drawRow(page, HEADER, PAGE_HEIGHT - 58, true);
     };
 
     startPage();
     for (const row of rows) {
       const rowHeight = Math.max(
         24,
-        this.#wrapCell(row, TABLE_WIDTH - 8, FONT_SIZE).length * LINE_HEIGHT + 8,
+        Math.max(
+          ...row.map((cell, index) =>
+            this.#wrapCell(cell, COLUMN_WIDTHS[index] - 8, FONT_SIZE).length,
+          ),
+        ) * LINE_HEIGHT + 8,
       );
 
-      if (y - rowHeight < 60) {
+      if (y - rowHeight < 42) {
         startPage();
       }
       y = drawRow(page, row, y);
