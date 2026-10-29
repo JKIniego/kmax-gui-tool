@@ -24,6 +24,10 @@ export default class VERResultTabManager {
    *      section: HTMLDivElement,
    *      table: HTMLTableElement,
    *   },
+   *   splitJoins: {
+   *      section: HTMLDivElement,
+   *      table: HTMLTableElement,
+   *   },
    *   theoreticalNotes: {
    *      section: HTMLDivElement,
    *      content: HTMLDivElement,
@@ -41,6 +45,7 @@ export default class VERResultTabManager {
   #view = {
     conclusion: { root: null, title: null, description: null },
     criteria: { section: null, table: null },
+    splitJoins: { section: null, table: null },
     theoreticalNotes: { section: null, content: null },
     violatingArcs: { section: null, table: null },
     violatingVertices: { section: null, table: null },
@@ -98,6 +103,12 @@ export default class VERResultTabManager {
     this.#view.criteria.table = this.#rootElement.querySelector(
       `[data-ver-section="criteria"] table`
     );
+    this.#view.splitJoins.section = this.#rootElement.querySelector(
+      `[data-ver-section="split-joins"]`
+    );
+    this.#view.splitJoins.table = this.#rootElement.querySelector(
+      `[data-ver-section="split-joins"] table`
+    );
     this.#view.theoreticalNotes.section = this.#rootElement.querySelector(
       `[data-ver-section="theoretical-notes"]`
     );
@@ -148,7 +159,13 @@ export default class VERResultTabManager {
   displayInstanceResult(instance) {
     const {
       name,
-      evaluation: { conclusion, criteria, violating, violatingRemarks },
+      evaluation: {
+        conclusion,
+        criteria,
+        splitJoins,
+        violating,
+        violatingRemarks,
+      },
     } = instance;
 
     // Setup conclusion chip
@@ -181,6 +198,50 @@ export default class VERResultTabManager {
       }
     } else {
       criteriaSection.classList.add("hidden");
+    }
+
+    const splitJoinsSection = this.#view.splitJoins.section;
+    const splitJoinsTableBody =
+      this.#view.splitJoins.table.querySelector("tbody");
+    splitJoinsTableBody.innerHTML = "";
+
+    if (splitJoins?.length > 0) {
+      splitJoinsSection.classList.remove("hidden");
+      for (const splitJoin of splitJoins) {
+        const pairDescription = `L${splitJoin.level}, ${splitJoin.pair}`;
+        const statusDescription = splitJoin.reason
+          || (splitJoin.pass ? "Satisfied" : "Not satisfied");
+
+        splitJoinsTableBody.appendChild(buildElement("tr", {}, [
+          buildElement("td", {}, [pairDescription]),
+          buildElement("td", {}, [
+            Number.isFinite(splitJoin.esplits) ? String(splitJoin.esplits) : "—",
+          ]),
+          buildElement("td", {}, [
+            Number.isFinite(splitJoin.expectedMergingJoins)
+              ? String(splitJoin.expectedMergingJoins)
+              : "—",
+          ]),
+          buildElement("td", {}, [
+            Number.isFinite(splitJoin.mergingJoins)
+              ? String(splitJoin.mergingJoins)
+              : "—",
+          ]),
+          buildElement("td", {}, [
+            Number.isFinite(splitJoin.maxSeparatingJoins)
+              ? String(splitJoin.maxSeparatingJoins)
+              : "—",
+          ]),
+          buildElement("td", {}, [
+            Number.isFinite(splitJoin.separatingJoins)
+              ? String(splitJoin.separatingJoins)
+              : "—",
+          ]),
+          buildElement("td", {}, [statusDescription]),
+        ]));
+      }
+    } else {
+      splitJoinsSection.classList.add("hidden");
     }
 
     // Setup theoretical notes

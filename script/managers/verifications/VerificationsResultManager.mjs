@@ -32,6 +32,17 @@ export class VerificationsResultManager {
    *                  pass: boolean,
    *                  description: string
    *              }[],
+   *              splitJoins?: {
+   *                  level: number,
+   *                  pair: string,
+   *                  pass: boolean,
+   *                  esplits?: number,
+   *                  mergingJoins?: number,
+   *                  expectedMergingJoins?: number,
+   *                  separatingJoins?: number,
+   *                  maxSeparatingJoins?: number,
+   *                  reason?: string
+   *              }[],
    *              violating: {
    *                  vertices: VertexUID[],
    *                  arcs: ArcUID[]

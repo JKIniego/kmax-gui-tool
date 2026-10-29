@@ -1144,12 +1144,14 @@ export class Soundness {
      *   description: string,
      *   violations: Array,
      *   criteria: Array,
+     *   splitJoins: Array,
      *   visualizationData: Object
      * }}
      */
     static checkkmaxSound(graph, evsa, matrixInput, kmaxInstance = null) {
         const criteria = [];
         const violations = [];
+        const splitJoins = [];
         let level = 1;
 
         // The WRSVA verifies the weak-soundness property of an RDLT by checking
@@ -1173,7 +1175,8 @@ export class Soundness {
                 message: `kᵐᵃˣ-soundness check was inconclusive`,
                 description: "The model does not satisfy all kᵐᵃˣ-soundness criteria.",
                 criteria,
-                violations
+                violations,
+                splitJoins
             };
         }
 
@@ -1267,6 +1270,12 @@ export class Soundness {
                 const splitVertex = paths[0]?.[0];
                 const joinVertex = paths[0]?.[paths[0].length - 1];
                 if (!splitVertex || !joinVertex) {
+                    splitJoins.push({
+                        level,
+                        pair: pairKey,
+                        pass: false,
+                        reason: "Unable to identify split and join vertices."
+                    });
                     criteria.push({
                         pass: false,
                         description: `kᵐᵃˣ-ensuring (L${level}, ${pairKey}): Not satisfied`
@@ -1318,6 +1327,12 @@ export class Soundness {
                 );
 
                 if (pairVertices.size === 0) {
+                    splitJoins.push({
+                        level,
+                        pair: pairKey,
+                        pass: false,
+                        reason: "No vertices were found on a path from the split to the join."
+                    });
                     criteria.push({
                         pass: false,
                         description: `kᵐᵃˣ-ensuring (L${level}, ${pairKey}): Not satisfied`
@@ -1411,9 +1426,21 @@ export class Soundness {
                 }
 
                 const expectedMergingJoins = Math.ceil(esplits / 2) - kmax + 1;
+                const maxSeparatingJoins = kmax - 1;
                 const isSatisfiedMergingJoins = mergingJoins === expectedMergingJoins;
-                const isSatisfiedSeparatingJoins = separatingJoins <= kmax - 1;
+                const isSatisfiedSeparatingJoins = separatingJoins <= maxSeparatingJoins;
                 const isKmaxEnsuring = isSatisfiedMergingJoins && isSatisfiedSeparatingJoins;
+
+                splitJoins.push({
+                    level,
+                    pair: pairKey,
+                    pass: isKmaxEnsuring,
+                    esplits,
+                    mergingJoins,
+                    expectedMergingJoins,
+                    separatingJoins,
+                    maxSeparatingJoins
+                });
 
                 console.log(
                     `Split-join pair ${pairKey}: Esplit = ${esplits}, merging joins = ${mergingJoins} ` +
@@ -1445,7 +1472,8 @@ export class Soundness {
                 ? "The model satisfies all kᵐᵃˣ-soundness criteria."
                 : "The model does not satisfy all kᵐᵃˣ-soundness criteria.",
             criteria,
-            violations
+            violations,
+            splitJoins
         };
     }
 }
