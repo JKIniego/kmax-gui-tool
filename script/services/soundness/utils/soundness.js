@@ -1193,6 +1193,8 @@ export class Soundness {
         const originalArcs = inputModel?.arcs || [];
         const originalComponents = inputModel?.components || [];
         let traversalCache = null;
+        const eligibleESplitArcs = new Map();
+        const splitJoinCounts = [];
 
         if (originalArcs.length > 0 && originalComponents.length > 0) {
             const vertexMap = buildVertexMap(originalComponents);
@@ -1381,7 +1383,6 @@ export class Soundness {
                     return !cycleVertices.has(splitVertex.id) && !hasMixedConstraints;
                 });
 
-                let esplits = 0;
                 for (const splitVertex of eligibleSplitVertices) {
                     const originalSplitVertex = originalVerticesByPairId.get(splitVertex.id);
                     if (!originalSplitVertex || !traversalCache) continue;
@@ -1390,17 +1391,12 @@ export class Soundness {
                         String(arc.fromVertexUID) === String(originalSplitVertex.id) &&
                         originalPairVertexIds.has(String(arc.toVertexUID))
                     );
-                    const states = {
-                        T: {},
-                        CTIndicator: {},
-                        path: [originalSplitVertex.id],
-                        activityProfile: {},
-                        tor: {}
-                    };
-
-                    esplits += outgoingArcs.filter(arc =>
-                        checkArc({ arcUID: arc.uid }, states, traversalCache)
-                    ).length;
+                    for (const arc of outgoingArcs) {
+                        eligibleESplitArcs.set(String(arc.uid), {
+                            arc,
+                            splitVertexId: originalSplitVertex.id
+                        });
+                    }
                 }
 
                 let mergingJoins = 0;
@@ -1425,38 +1421,82 @@ export class Soundness {
                     }
                 }
 
-                const expectedMergingJoins = Math.ceil(esplits / 2) - kmax + 1;
-                const maxSeparatingJoins = kmax - 1;
-                const isSatisfiedMergingJoins = mergingJoins === expectedMergingJoins;
-                const isSatisfiedSeparatingJoins = separatingJoins <= maxSeparatingJoins;
-                const isKmaxEnsuring = isSatisfiedMergingJoins && isSatisfiedSeparatingJoins;
-
-                splitJoins.push({
+                splitJoinCounts.push({
                     level,
                     pair: pairKey,
-                    pass: isKmaxEnsuring,
-                    esplits,
                     mergingJoins,
-                    expectedMergingJoins,
                     separatingJoins,
-                    maxSeparatingJoins
-                });
-
-                console.log(
-                    `Split-join pair ${pairKey}: Esplit = ${esplits}, merging joins = ${mergingJoins} ` +
-                    `(expected ${expectedMergingJoins}), separating joins = ${separatingJoins} ` +
-                    `(maximum ${kmax - 1})`
-                );
-
-                criteria.push({
-                    pass: isKmaxEnsuring,
-                    description: isKmaxEnsuring
-                        ? `kᵐᵃˣ-ensuring (L${level}, ${pairKey}): Satisfied`
-                        : `kᵐᵃˣ-ensuring (L${level}, ${pairKey}): Not satisfied`
                 });
             }
 
             level++;
+        }
+
+        let esplits = 0;
+        const countedESplitArcs = [];
+        const statesBySplitVertex = new Map();
+        if (traversalCache) {
+            for (const { arc, splitVertexId } of eligibleESplitArcs.values()) {
+                const splitVertexKey = String(splitVertexId);
+                let states = statesBySplitVertex.get(splitVertexKey);
+                if (!states) {
+                    states = {
+                        T: {},
+                        CTIndicator: {},
+                        path: [splitVertexId],
+                        activityProfile: {},
+                        tor: {}
+                    };
+                    statesBySplitVertex.set(splitVertexKey, states);
+                }
+
+                if (checkArc({ arcUID: arc.uid }, states, traversalCache)) {
+                    esplits++;
+                    const fromIdentifier =
+                        traversalCache.vertexMap[arc.fromVertexUID]?.identifier ??
+                        arc.fromVertexUID;
+                    const toIdentifier =
+                        traversalCache.vertexMap[arc.toVertexUID]?.identifier ??
+                        arc.toVertexUID;
+                    const countedArc = `${fromIdentifier}-${toIdentifier}`;
+                    countedESplitArcs.push(countedArc);
+                    console.log(`[kmax] Counted E-split ${esplits}: ${countedArc}`);
+                }
+            }
+        }
+        console.log(`[kmax] Total E-splits: ${esplits}`, countedESplitArcs);
+
+        for (const splitJoin of splitJoinCounts) {
+            const expectedMergingJoins = Math.ceil(esplits / 2) - kmax + 1;
+            const maxSeparatingJoins = kmax - 1;
+            const isSatisfiedMergingJoins =
+                splitJoin.mergingJoins === expectedMergingJoins;
+            const isSatisfiedSeparatingJoins =
+                splitJoin.separatingJoins <= maxSeparatingJoins;
+            const isKmaxEnsuring =
+                isSatisfiedMergingJoins && isSatisfiedSeparatingJoins;
+
+            splitJoins.push({
+                ...splitJoin,
+                pass: isKmaxEnsuring,
+                esplits,
+                expectedMergingJoins,
+                maxSeparatingJoins
+            });
+
+            console.log(
+                `Split-join pair ${splitJoin.pair}: Esplit = ${esplits}, ` +
+                `merging joins = ${splitJoin.mergingJoins} ` +
+                `(expected ${expectedMergingJoins}), separating joins = ${splitJoin.separatingJoins} ` +
+                `(maximum ${maxSeparatingJoins})`
+            );
+
+            criteria.push({
+                pass: isKmaxEnsuring,
+                description: isKmaxEnsuring
+                    ? `kᵐᵃˣ-ensuring (L${splitJoin.level}, ${splitJoin.pair}): Satisfied`
+                    : `kᵐᵃˣ-ensuring (L${splitJoin.level}, ${splitJoin.pair}): Not satisfied`
+            });
         }
 
         const pass = criteria.every(criterion => criterion.pass);
