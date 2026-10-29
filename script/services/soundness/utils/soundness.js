@@ -1402,6 +1402,7 @@ export class Soundness {
                 let mergingJoins = 0;
                 let separatingJoins = 0;
                 const joinVertices = [...pairVertices.values()].filter(vertex =>
+                    !cycleVertices.has(vertex.id) &&
                     pairEdges.filter(edge => edge.to.id === vertex.id).length > 1
                 );
                 for (const joinVertex of joinVertices) {
