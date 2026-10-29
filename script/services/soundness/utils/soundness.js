@@ -1278,10 +1278,6 @@ export class Soundness {
                         pass: false,
                         reason: "Unable to identify split and join vertices."
                     });
-                    criteria.push({
-                        pass: false,
-                        description: `kᵐᵃˣ-ensuring (L${level}, ${pairKey}): Not satisfied`
-                    });
                     continue;
                 }
 
@@ -1334,10 +1330,6 @@ export class Soundness {
                         pair: pairKey,
                         pass: false,
                         reason: "No vertices were found on a path from the split to the join."
-                    });
-                    criteria.push({
-                        pass: false,
-                        description: `kᵐᵃˣ-ensuring (L${level}, ${pairKey}): Not satisfied`
                     });
                     continue;
                 }
@@ -1491,16 +1483,23 @@ export class Soundness {
                 `(expected ${expectedMergingJoins}), separating joins = ${splitJoin.separatingJoins} ` +
                 `(maximum ${maxSeparatingJoins})`
             );
+        }
 
+        const splitJoinLevels = [...new Set(splitJoins.map(splitJoin => splitJoin.level))];
+        for (const splitJoinLevel of splitJoinLevels) {
+            const levelPass = splitJoins
+                .filter(splitJoin => splitJoin.level === splitJoinLevel)
+                .every(splitJoin => splitJoin.pass);
             criteria.push({
-                pass: isKmaxEnsuring,
-                description: isKmaxEnsuring
-                    ? `kᵐᵃˣ-ensuring (L${splitJoin.level}, ${splitJoin.pair}): Satisfied`
-                    : `kᵐᵃˣ-ensuring (L${splitJoin.level}, ${splitJoin.pair}): Not satisfied`
+                pass: levelPass,
+                description: levelPass
+                    ? `kᵐᵃˣ-ensuring (L${splitJoinLevel}): Satisfied`
+                    : `kᵐᵃˣ-ensuring (L${splitJoinLevel}): Not satisfied`
             });
         }
 
-        const pass = criteria.every(criterion => criterion.pass);
+        const pass = criteria.every(criterion => criterion.pass) &&
+            splitJoins.every(splitJoin => splitJoin.pass);
 
         return {
             ...weakResult,
