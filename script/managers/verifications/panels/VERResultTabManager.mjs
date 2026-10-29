@@ -219,39 +219,28 @@ export default class VERResultTabManager {
       this.#view.splitJoins.table.querySelector("tbody");
     splitJoinsTableBody.innerHTML = "";
 
-    if (splitJoins?.length > 0) {
+    const violatingSplitJoins = splitJoins?.filter((splitJoin) => !splitJoin.pass) || [];
+    if (violatingSplitJoins.length > 0) {
       splitJoinsSection.classList.remove("hidden");
-      for (const splitJoin of splitJoins) {
-        const pairDescription = `L${splitJoin.level}, ${splitJoin.pair}`;
-        const statusDescription = splitJoin.reason
-          || (splitJoin.pass ? "Satisfied" : "Not satisfied");
+      for (const splitJoin of violatingSplitJoins) {
+        const pairVertices = splitJoin.vertices || [];
+        const splitIdentifier = pairVertices[0] !== undefined
+          ? this.#parentManager.getVertexIdentifier(pairVertices[0])
+          : null;
+        const joinIdentifier = pairVertices[1] !== undefined
+          ? this.#parentManager.getVertexIdentifier(pairVertices[1])
+          : null;
+        const pairContent = splitIdentifier && joinIdentifier
+          ? [
+            `L${splitJoin.level}: `,
+            buildVertexTagElement(splitIdentifier),
+            " → ",
+            buildVertexTagElement(joinIdentifier),
+          ]
+          : [`L${splitJoin.level}, ${splitJoin.pair}`];
 
         splitJoinsTableBody.appendChild(buildElement("tr", {}, [
-          buildElement("td", {}, [pairDescription]),
-          buildElement("td", {}, [
-            Number.isFinite(splitJoin.esplits) ? String(splitJoin.esplits) : "—",
-          ]),
-          buildElement("td", {}, [
-            Number.isFinite(splitJoin.expectedMergingJoins)
-              ? String(splitJoin.expectedMergingJoins)
-              : "—",
-          ]),
-          buildElement("td", {}, [
-            Number.isFinite(splitJoin.mergingJoins)
-              ? String(splitJoin.mergingJoins)
-              : "—",
-          ]),
-          buildElement("td", {}, [
-            Number.isFinite(splitJoin.maxSeparatingJoins)
-              ? String(splitJoin.maxSeparatingJoins)
-              : "—",
-          ]),
-          buildElement("td", {}, [
-            Number.isFinite(splitJoin.separatingJoins)
-              ? String(splitJoin.separatingJoins)
-              : "—",
-          ]),
-          buildElement("td", {}, [statusDescription]),
+          buildElement("td", {}, pairContent),
         ]));
       }
     } else {

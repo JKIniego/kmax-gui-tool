@@ -1275,6 +1275,9 @@ export class Soundness {
                     splitJoins.push({
                         level,
                         pair: pairKey,
+                        vertices: [splitVertex?.id, joinVertex?.id].filter(
+                            vertexId => Number.isFinite(vertexId)
+                        ),
                         pass: false,
                         reason: "Unable to identify split and join vertices."
                     });
@@ -1328,6 +1331,9 @@ export class Soundness {
                     splitJoins.push({
                         level,
                         pair: pairKey,
+                        vertices: [splitVertex.id, joinVertex.id].filter(
+                            vertexId => Number.isFinite(vertexId)
+                        ),
                         pass: false,
                         reason: "No vertices were found on a path from the split to the join."
                     });
@@ -1417,6 +1423,9 @@ export class Soundness {
                 splitJoinCounts.push({
                     level,
                     pair: pairKey,
+                    vertices: [splitVertex, joinVertex]
+                        .map(vertex => originalVerticesByPairId.get(vertex.id)?.id)
+                        .filter(vertexId => Number.isFinite(vertexId)),
                     mergingJoins,
                     separatingJoins,
                 });

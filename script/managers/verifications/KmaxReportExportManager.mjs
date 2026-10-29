@@ -3,47 +3,24 @@ import { sanitizeForFilename, startBlobDownload } from "../file/utils.mjs";
 const PAGE_WIDTH = 595;
 const PAGE_HEIGHT = 842;
 const LEFT_MARGIN = 50;
-const TABLE_WIDTH = 495;
-const COLUMN_WIDTHS = [100, 45, 75, 65, 75, 65, 70];
-const HEADER = [
-  "Pair",
-  "E-split",
-  "Calculated Jm",
-  "Counted Jm",
-  "Calculated Js",
-  "Counted Js",
-  "Status",
-];
+const TABLE_WIDTH = PAGE_WIDTH - LEFT_MARGIN * 2;
 const FONT_SIZE = 8;
 const LINE_HEIGHT = 10;
 
 export default class KmaxReportExportManager {
   static export(instance, modelName) {
-    const splitJoins = instance.evaluation?.splitJoins;
-    if (!Array.isArray(splitJoins) || splitJoins.length === 0) {
-      throw new Error("Cannot export a kmax-ensuring report without split/join results.");
-    }
-
-    const rows = splitJoins.map((splitJoin) => [
-      `L${splitJoin.level}, ${splitJoin.pair || "Unidentified pair"}`,
-      this.#value(splitJoin.esplits),
-      this.#value(splitJoin.expectedMergingJoins),
-      this.#value(splitJoin.mergingJoins),
-      this.#value(splitJoin.maxSeparatingJoins),
-      this.#value(splitJoin.separatingJoins),
-      splitJoin.reason || (splitJoin.pass ? "Satisfied" : "Not satisfied"),
-    ]);
-    const pdf = this.#createPdf(rows, modelName || "Untitled Model");
+    const splitJoins = instance.evaluation?.splitJoins || [];
+    const violatingSplitJoins = splitJoins.filter((splitJoin) => !splitJoin.pass);
+    const rows = violatingSplitJoins.map(
+      (splitJoin) => `L${splitJoin.level}, ${splitJoin.pair || "Unidentified pair"}`,
+    );
+    const pdf = this.#createPdf(rows);
     const filename =
       `${sanitizeForFilename(modelName || "model")}_kmax-ensuring.pdf`;
     startBlobDownload(filename, pdf, "application/pdf");
   }
 
-  static #value(value) {
-    return Number.isFinite(value) ? String(value) : "-";
-  }
-
-  static #createPdf(rows, modelName) {
+  static #createPdf(rows) {
     const pages = [];
     let page;
     let y;
@@ -55,31 +32,22 @@ export default class KmaxReportExportManager {
       );
     };
 
-    const drawRow = (content, cells, top, header = false) => {
-      const wrappedCells = cells.map((cell, index) =>
-        this.#wrapCell(cell, COLUMN_WIDTHS[index] - 8, FONT_SIZE),
-      );
-      const lineCount = Math.max(...wrappedCells.map((lines) => lines.length));
+    const drawRow = (content, text, top, header = false) => {
+      const wrappedLines = this.#wrapCell(text, TABLE_WIDTH - 8, FONT_SIZE);
+      const lineCount = wrappedLines.length;
       const height = Math.max(24, lineCount * LINE_HEIGHT + 8);
-      let x = LEFT_MARGIN;
+      const bottom = top - height;
+      content.push(`${LEFT_MARGIN} ${bottom} ${TABLE_WIDTH} ${height} re S`);
 
-      for (let index = 0; index < COLUMN_WIDTHS.length; index++) {
-        const width = COLUMN_WIDTHS[index];
-        const bottom = top - height;
-        content.push(`${x} ${bottom} ${width} ${height} re S`);
-
-        const lines = wrappedCells[index];
-        for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
-          addText(
-            content,
-            lines[lineIndex],
-            x + 4,
-            top - 13 - lineIndex * LINE_HEIGHT,
-            FONT_SIZE,
-            header,
-          );
-        }
-        x += width;
+      for (let lineIndex = 0; lineIndex < wrappedLines.length; lineIndex++) {
+        addText(
+          content,
+          wrappedLines[lineIndex],
+          LEFT_MARGIN + 4,
+          top - 13 - lineIndex * LINE_HEIGHT,
+          FONT_SIZE,
+          header,
+        );
       }
 
       return top - height;
@@ -88,20 +56,14 @@ export default class KmaxReportExportManager {
     const startPage = () => {
       page = [];
       pages.push(page);
-      addText(page, "kmax-Ensuring Analysis", LEFT_MARGIN, PAGE_HEIGHT - 48, 16, true);
-      addText(page, `Model: ${modelName}`, LEFT_MARGIN, PAGE_HEIGHT - 66, 9);
-      y = drawRow(page, HEADER, PAGE_HEIGHT - 82, true);
+      y = drawRow(page, "Violating Split-Join Pairs", PAGE_HEIGHT - 50, true);
     };
 
     startPage();
     for (const row of rows) {
       const rowHeight = Math.max(
         24,
-        Math.max(
-          ...row.map((cell, index) =>
-            this.#wrapCell(cell, COLUMN_WIDTHS[index] - 8, FONT_SIZE).length,
-          ),
-        ) * LINE_HEIGHT + 8,
+        this.#wrapCell(row, TABLE_WIDTH - 8, FONT_SIZE).length * LINE_HEIGHT + 8,
       );
 
       if (y - rowHeight < 60) {
@@ -109,16 +71,6 @@ export default class KmaxReportExportManager {
       }
       y = drawRow(page, row, y);
     }
-
-    pages.forEach((content, index) => {
-      addText(
-        content,
-        `Page ${index + 1} of ${pages.length}`,
-        PAGE_WIDTH - 100,
-        30,
-        8,
-      );
-    });
 
     return this.#serializePdf(pages);
   }

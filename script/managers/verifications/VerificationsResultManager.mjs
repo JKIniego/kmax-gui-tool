@@ -38,6 +38,7 @@ export class VerificationsResultManager {
    *                  level: number,
    *                  pair: string,
    *                  pass: boolean,
+   *                  vertices?: VertexUID[],
    *                  esplits?: number,
    *                  mergingJoins?: number,
    *                  expectedMergingJoins?: number,
@@ -162,6 +163,15 @@ export class VerificationsResultManager {
         drawingManager.highlightVertex(vertexUID);
       }
 
+      const violatingSplitJoinVertices = new Set(
+        (instance.evaluation?.splitJoins || [])
+          .filter((splitJoin) => !splitJoin.pass)
+          .flatMap((splitJoin) => splitJoin.vertices || []),
+      );
+      for (const vertexUID of violatingSplitJoinVertices) {
+        drawingManager.highlightVertex(vertexUID);
+      }
+
       this.#drawingManagers.push(drawingManager);
     }
 
@@ -174,9 +184,7 @@ export class VerificationsResultManager {
   }
 
   get canExportKmaxReport() {
-    const splitJoins =
-      this.result.instances[this.#currentInstanceIndex]?.evaluation?.splitJoins;
-    return Array.isArray(splitJoins) && splitJoins.length > 0;
+    return this.#soundnessConfig?.notion === "kmax";
   }
 
   get canCheckKmax() {
