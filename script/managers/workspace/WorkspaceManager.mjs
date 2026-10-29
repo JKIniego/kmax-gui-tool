@@ -156,6 +156,12 @@ export default class WorkspaceManager {
      */
     #onActionClicked(action) {
         switch(action) {
+            case "undo":
+                this.context.managers.modelling.undo();
+            break;
+            case "redo":
+                this.context.managers.modelling.redo();
+            break;
             case "save":
                 this.context.managers.export.exportToRDLTFile();
             break;
@@ -182,6 +188,16 @@ export default class WorkspaceManager {
 
             
         }
+    }
+
+    setUndoRedoState(canUndo, canRedo) {
+        this.#view.buttons.actions.undo.disabled = !canUndo;
+        this.#view.buttons.actions.redo.disabled = !canRedo;
+    }
+
+    setModelName(name) {
+        this.#view.header.modelNameInput.value = name;
+        App.setContextTabTitle(this.context, name);
     }
 
     #setupSubworkspaceTabs() {
