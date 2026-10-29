@@ -168,6 +168,7 @@ export function verifySoundness(model, source, sink, soundnessNotion, kmaxInstan
     }
     
     let soundnessPass, soundnessTitle, soundnessDescription, soundnessCriteria;
+    let soundnessKmax = null;
     let soundnessSplitJoins = [];
     let soundnessViolation = {arcs: [], vertices: []};
     let soundnessViolationRemarks = {arcs: {}, vertices: {}};
@@ -307,6 +308,7 @@ export function verifySoundness(model, source, sink, soundnessNotion, kmaxInstan
             soundnessTitle = kmaxResult.message;
             soundnessDescription = kmaxResult.description;
             soundnessCriteria = kmaxResult.criteria;
+            soundnessKmax = kmaxResult.kmax;
             soundnessSplitJoins = kmaxResult.splitJoins || [];
 
             if (kmaxResult.violations) {
@@ -1004,6 +1006,7 @@ export function verifySoundness(model, source, sink, soundnessNotion, kmaxInstan
                         description: soundnessDescription
                     },
                     criteria: soundnessCriteria,
+                    ...(soundnessKmax !== null && { kmax: soundnessKmax }),
                     splitJoins: soundnessSplitJoins,
                     violating: {
                         arcs: soundnessViolation.arcs,

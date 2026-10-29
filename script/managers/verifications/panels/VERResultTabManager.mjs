@@ -89,6 +89,13 @@ export default class VERResultTabManager {
       });
     }
 
+    const exportKmaxReportButton = this.#rootElement.querySelector(
+      "button[data-subaction='export-kmax-report']",
+    );
+    exportKmaxReportButton.addEventListener("click", () => {
+      this.#parentManager.exportKmaxReport();
+    });
+
     this.#view.conclusion.root =
       this.#rootElement.querySelector(".status-chip");
     this.#view.conclusion.title =
@@ -167,6 +174,13 @@ export default class VERResultTabManager {
         violatingRemarks,
       },
     } = instance;
+    const exportKmaxReportButton = this.#rootElement.querySelector(
+      "button[data-subaction='export-kmax-report']",
+    );
+    exportKmaxReportButton.classList.toggle(
+      "hidden",
+      !this.#parentManager.canExportKmaxReport,
+    );
 
     // Setup conclusion chip
     if (conclusion.pass) {
