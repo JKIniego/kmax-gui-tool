@@ -1352,43 +1352,21 @@ export class Soundness {
                 const originalPairVertexIds = new Set(
                     [...originalVerticesByPairId.values()].map(vertex => String(vertex.id))
                 );
+                const pairOriginalComponents = originalComponents.filter(component =>
+                    originalPairVertexIds.has(String(component.uid))
+                );
                 const pairOriginalArcs = originalArcs.filter(arc =>
                     originalPairVertexIds.has(String(arc.fromVertexUID)) &&
                     originalPairVertexIds.has(String(arc.toVertexUID))
                 );
-                const pairVertexIdByOriginalId = new Map(
-                    [...originalVerticesByPairId].map(([pairVertexId, originalVertex]) => [
-                        String(originalVertex.id),
-                        String(pairVertexId)
-                    ])
-                );
-                const pairAdjacency = new Map();
-                for (const edge of pairEdges) {
-                    const fromId = String(edge.from.id);
-                    const neighbors = pairAdjacency.get(fromId) || [];
-                    neighbors.push(String(edge.to.id));
-                    pairAdjacency.set(fromId, neighbors);
-                }
-                const canReachInPairSubgraph = (parentId, childId) => {
-                    const visited = new Set([parentId]);
-                    const queue = [parentId];
-                    for (let index = 0; index < queue.length; index++) {
-                        const currentId = queue[index];
-                        if (currentId === childId) return true;
-                        for (const nextId of pairAdjacency.get(currentId) || []) {
-                            if (visited.has(nextId)) continue;
-                            visited.add(nextId);
-                            queue.push(nextId);
-                        }
-                    }
-                    return false;
-                };
                 const cycleDetector = new Cycle(pairEdges.map((edge, index) => ({
                     'r-id': edge.id ?? index,
                     arc: `${edge.from.id}, ${edge.to.id}`
                 })));
                 const cycleVertices = new Set(
-                    cycleDetector.findCycles(cycleDetector.graph).flatMap(cycle => cycle.flat())
+                    cycleDetector.findCycles(cycleDetector.graph)
+                        .flatMap(cycle => cycle.flat())
+                        .map(vertexId => String(vertexId))
                 );
 
                 const splitVertices = [...pairVertices.values()].filter(vertex =>
@@ -1408,32 +1386,101 @@ export class Soundness {
                             constraint !== "epsilon" && constraint !== "E"
                         );
 
-                    return !cycleVertices.has(splitVertex.id) && !hasMixedConstraints;
+                    return !cycleVertices.has(String(splitVertex.id)) && !hasMixedConstraints;
                 });
                 console.log("Did pass through");
                 console.log(eligibleSplitVertices);
 
                 let esplits = 0;
+                const countedESplitArcs = [];
                 for (const splitVertex of eligibleSplitVertices) {
                     const originalSplitVertex = originalVerticesByPairId.get(splitVertex.id);
-                    if (!originalSplitVertex) continue;
+                    if (!originalSplitVertex) {
+                        console.warn(
+                            `[kmax] E-split candidate ${splitVertex.id} in ${pairKey} has no original vertex mapping.`
+                        );
+                        continue;
+                    }
+
+                    const reachableOriginalVertexIds = new Set([
+                        String(originalSplitVertex.id)
+                    ]);
+                    const reachableQueue = [String(originalSplitVertex.id)];
+                    for (let index = 0; index < reachableQueue.length; index++) {
+                        const currentId = reachableQueue[index];
+                        for (const arc of pairOriginalArcs) {
+                            if (String(arc.fromVertexUID) !== currentId) continue;
+                            const nextId = String(arc.toVertexUID);
+                            if (reachableOriginalVertexIds.has(nextId)) continue;
+                            reachableOriginalVertexIds.add(nextId);
+                            reachableQueue.push(nextId);
+                        }
+                    }
+                    const splitArcs = pairOriginalArcs.filter(arc =>
+                        reachableOriginalVertexIds.has(String(arc.fromVertexUID)) &&
+                        reachableOriginalVertexIds.has(String(arc.toVertexUID))
+                    );
+                    const splitComponents = pairOriginalComponents.filter(component =>
+                        reachableOriginalVertexIds.has(String(component.uid))
+                    );
+                    const splitVertexMap = buildVertexMap(splitComponents);
+                    const splitTraversalCache = {
+                        vertexMap: splitVertexMap,
+                        arcs: splitArcs,
+                        arcMap: buildArcMap(splitArcs),
+                        arcsMatrix: buildArcsAdjacencyMatrix(splitArcs),
+                        rbsMatrix: buildRBSMatrix(splitVertexMap, splitArcs),
+                    };
 
                     const outgoingArcs = pairOriginalArcs.filter(arc =>
                         String(arc.fromVertexUID) === String(originalSplitVertex.id)
                     );
+                    console.log(
+                        `[kmax] E-split candidate ${splitVertex.id} (${originalSplitVertex.id}) ` +
+                        `in ${pairKey}: ${outgoingArcs.length} outgoing original arcs in pair.`,
+                        outgoingArcs
+                    );
+                    const states = {
+                        T: {},
+                        CTIndicator: {},
+                        path: [originalSplitVertex.id],
+                        activityProfile: {},
+                        tor: {}
+                    };
                     for (const arc of outgoingArcs) {
-                        const parentId = pairVertexIdByOriginalId.get(String(arc.fromVertexUID));
-                        const childId = pairVertexIdByOriginalId.get(String(arc.toVertexUID));
-                        if (parentId && childId && canReachInPairSubgraph(parentId, childId)) {
+                        const traversable = checkArc(
+                            { arcUID: arc.uid },
+                            states,
+                            splitTraversalCache
+                        );
+                        console.log(
+                            `[kmax] E-split arc ${arc.uid} (${arc.fromVertexUID} -> ${arc.toVertexUID}) ` +
+                            `in ${pairKey}: traversable=${traversable}.`
+                        );
+                        if (traversable) {
                             esplits++;
+                            const fromIdentifier =
+                                splitVertexMap[arc.fromVertexUID]?.identifier ?? arc.fromVertexUID;
+                            const toIdentifier =
+                                splitVertexMap[arc.toVertexUID]?.identifier ?? arc.toVertexUID;
+                            const countedArc = `${fromIdentifier}->${toIdentifier}`;
+                            countedESplitArcs.push(countedArc);
+                            console.log(
+                                `[kmax] Counted E-split ${esplits} for ${pairKey}: ` +
+                                `${countedArc} (arc ${arc.uid}).`
+                            );
                         }
                     }
                 }
+                console.log(
+                    `[kmax] E-splits for ${pairKey}: ${esplits}`,
+                    countedESplitArcs
+                );
 
                 let mergingJoins = 0;
                 let separatingJoins = 0;
                 const joinVertices = [...pairVertices.values()].filter(vertex =>
-                    !cycleVertices.has(vertex.id) &&
+                    !cycleVertices.has(String(vertex.id)) &&
                     pairEdges.filter(edge => edge.to.id === vertex.id).length > 1
                 );
                 for (const joinVertex of joinVertices) {
