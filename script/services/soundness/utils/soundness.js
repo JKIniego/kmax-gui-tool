@@ -1193,7 +1193,6 @@ export class Soundness {
         const originalArcs = inputModel?.arcs || [];
         const originalComponents = inputModel?.components || [];
         let traversalCache = null;
-        const eligibleESplitArcs = new Map();
         const splitJoinCounts = [];
 
         if (originalArcs.length > 0 && originalComponents.length > 0) {
@@ -1353,6 +1352,23 @@ export class Soundness {
                 const originalPairVertexIds = new Set(
                     [...originalVerticesByPairId.values()].map(vertex => String(vertex.id))
                 );
+                const pairOriginalComponents = originalComponents.filter(component =>
+                    originalPairVertexIds.has(String(component.uid))
+                );
+                const pairOriginalArcs = originalArcs.filter(arc =>
+                    originalPairVertexIds.has(String(arc.fromVertexUID)) &&
+                    originalPairVertexIds.has(String(arc.toVertexUID))
+                );
+                const pairVertexMap = buildVertexMap(pairOriginalComponents);
+                const pairTraversalCache = pairOriginalComponents.length > 0
+                    ? {
+                        vertexMap: pairVertexMap,
+                        arcs: pairOriginalArcs,
+                        arcMap: buildArcMap(pairOriginalArcs),
+                        arcsMatrix: buildArcsAdjacencyMatrix(pairOriginalArcs),
+                        rbsMatrix: buildRBSMatrix(pairVertexMap, pairOriginalArcs),
+                    }
+                    : null;
                 const cycleDetector = new Cycle(pairEdges.map((edge, index) => ({
                     'r-id': edge.id ?? index,
                     arc: `${edge.from.id}, ${edge.to.id}`
@@ -1381,19 +1397,33 @@ export class Soundness {
                     return !cycleVertices.has(splitVertex.id) && !hasMixedConstraints;
                 });
 
+                let esplits = 0;
+                const statesBySplitVertex = new Map();
                 for (const splitVertex of eligibleSplitVertices) {
                     const originalSplitVertex = originalVerticesByPairId.get(splitVertex.id);
-                    if (!originalSplitVertex || !traversalCache) continue;
+                    if (!originalSplitVertex || !pairTraversalCache) continue;
 
-                    const outgoingArcs = originalArcs.filter(arc =>
+                    const outgoingArcs = pairOriginalArcs.filter(arc =>
                         String(arc.fromVertexUID) === String(originalSplitVertex.id) &&
                         originalPairVertexIds.has(String(arc.toVertexUID))
                     );
                     for (const arc of outgoingArcs) {
-                        eligibleESplitArcs.set(String(arc.uid), {
-                            arc,
-                            splitVertexId: originalSplitVertex.id
-                        });
+                        const splitVertexKey = String(splitVertex.id);
+                        let states = statesBySplitVertex.get(splitVertexKey);
+                        if (!states) {
+                            states = {
+                                T: {},
+                                CTIndicator: {},
+                                path: [originalSplitVertex.id],
+                                activityProfile: {},
+                                tor: {}
+                            };
+                            statesBySplitVertex.set(splitVertexKey, states);
+                        }
+
+                        if (checkArc({ arcUID: arc.uid }, states, pairTraversalCache)) {
+                            esplits++;
+                        }
                     }
                 }
 
@@ -1428,47 +1458,15 @@ export class Soundness {
                         .filter(vertexId => Number.isFinite(vertexId)),
                     mergingJoins,
                     separatingJoins,
+                    esplits,
                 });
             }
 
             level++;
         }
 
-        let esplits = 0;
-        const countedESplitArcs = [];
-        const statesBySplitVertex = new Map();
-        if (traversalCache) {
-            for (const { arc, splitVertexId } of eligibleESplitArcs.values()) {
-                const splitVertexKey = String(splitVertexId);
-                let states = statesBySplitVertex.get(splitVertexKey);
-                if (!states) {
-                    states = {
-                        T: {},
-                        CTIndicator: {},
-                        path: [splitVertexId],
-                        activityProfile: {},
-                        tor: {}
-                    };
-                    statesBySplitVertex.set(splitVertexKey, states);
-                }
-
-                if (checkArc({ arcUID: arc.uid }, states, traversalCache)) {
-                    esplits++;
-                    const fromIdentifier =
-                        traversalCache.vertexMap[arc.fromVertexUID]?.identifier ??
-                        arc.fromVertexUID;
-                    const toIdentifier =
-                        traversalCache.vertexMap[arc.toVertexUID]?.identifier ??
-                        arc.toVertexUID;
-                    const countedArc = `${fromIdentifier}-${toIdentifier}`;
-                    countedESplitArcs.push(countedArc);
-                    console.log(`[kmax] Counted E-split ${esplits}: ${countedArc}`);
-                }
-            }
-        }
-        console.log(`[kmax] Total E-splits: ${esplits}`, countedESplitArcs);
-
         for (const splitJoin of splitJoinCounts) {
+            const { esplits } = splitJoin;
             const expectedMergingJoins = Math.ceil(esplits / 2) - kmax + 1;
             const maxSeparatingJoins = kmax - 1;
             const isSatisfiedMergingJoins =
