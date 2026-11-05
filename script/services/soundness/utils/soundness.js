@@ -1349,10 +1349,19 @@ export class Soundness {
                     'r-id': edge.id ?? index,
                     arc: `${edge.from.id}, ${edge.to.id}`
                 })));
+                const detectedCycles = cycleDetector.findCycles(cycleDetector.graph);
                 const cycleVertices = new Set(
-                    cycleDetector.findCycles(cycleDetector.graph)
+                    detectedCycles
                         .flatMap(cycle => cycle.flat())
                         .map(vertexId => String(vertexId))
+                );
+                const loopingArcKeys = new Set(
+                    detectedCycles
+                        .filter(cycle => cycle.length > 0)
+                        .map(cycle => {
+                            const [from, to] = cycle[cycle.length - 1];
+                            return `${from}->${to}`;
+                        })
                 );
 
                 const splitVertices = [...pairVertices.values()].filter(vertex =>
@@ -1372,7 +1381,7 @@ export class Soundness {
                             constraint !== "epsilon" && constraint !== "E"
                         );
 
-                    return !cycleVertices.has(String(splitVertex.id)) && !hasMixedConstraints;
+                    return !hasMixedConstraints;
                 });
                 console.log("Did pass through");
                 console.log(eligibleSplitVertices);
@@ -1428,6 +1437,16 @@ export class Soundness {
                         [...P_Total].map(vertexId => String(vertexId))
                     );
                     for (const arc of outgoingArcs) {
+                        const arcKey =
+                            `${String(arc.fromVertexUID)}->${String(arc.toVertexUID)}`;
+                        if (loopingArcKeys.has(arcKey)) {
+                            console.log(
+                                `[kmax] Excluding looping E-split arc ${arc.uid} ` +
+                                `(${arc.fromVertexUID} -> ${arc.toVertexUID}) in ${pairKey}.`
+                            );
+                            continue;
+                        }
+
                         const traversable = contractedVertexIds.has(String(arc.toVertexUID));
                         console.log(
                             `[kmax] E-split arc ${arc.uid} (${arc.fromVertexUID} -> ${arc.toVertexUID}) ` +
