@@ -9,9 +9,9 @@ import { ActivityProfile } from '../models/ActivityProfile.js';
 import { Activity } from '../models/Activity.js';
 import { CASExtractor } from './cas-extractor.js';
 import { GeneralizedImpedance } from './generalized-impedance.js';
-import { checkArc } from '../../aes.mjs';
-import { buildArcMap, buildArcsAdjacencyMatrix, buildRBSMatrix, buildVertexMap } from '../../../utils.mjs';
+import { buildVertexMap } from '../../../utils.mjs';
 import { buildSplitJoinPairs } from './kmax.mjs';
+import { generateTotalContractionPath } from './totalcontractionpath.mjs';
 // No need to import visualizer here - it's used in soundness-service
 
 /**
@@ -1192,20 +1192,7 @@ export class Soundness {
         const inputModel = matrixInput?.input_rdlt?.model;
         const originalArcs = inputModel?.arcs || [];
         const originalComponents = inputModel?.components || [];
-        let traversalCache = null;
         const splitJoinCounts = [];
-
-        if (originalArcs.length > 0 && originalComponents.length > 0) {
-            const vertexMap = buildVertexMap(originalComponents);
-            const arcMap = buildArcMap(originalArcs);
-            traversalCache = {
-                vertexMap,
-                arcs: originalArcs,
-                arcMap,
-                arcsMatrix: buildArcsAdjacencyMatrix(originalArcs),
-                rbsMatrix: buildRBSMatrix(vertexMap, originalArcs),
-            };
-        }
 
         // The model must allow kmax-number of activities to initiate, traverse,
         // and terminate, similar to the WF-Net definition. This creates the need
@@ -1214,21 +1201,20 @@ export class Soundness {
         // number of outgoing arcs from the source s.
         if (kmaxInstance !== null) {
             kmax = kmaxInstance;
-        } else if (source && traversalCache) {
-            const states = {
-                T: {},
-                CTIndicator: {},
-                path: [source.id],
-                activityProfile: {},
-                tor: {}
-            };
-
-            const outgoingArcs = originalArcs.filter(arc => arc.fromVertexUID === source.id);
-            for (const arc of outgoingArcs) {
-                const isUnconstrained = checkArc({ arcUID: arc.uid }, states, traversalCache);
-                
-                if (isUnconstrained) kmax += 1;
-            }
+        } else if (source && originalComponents.length > 0) {
+            const { P_Total } = generateTotalContractionPath({
+                vertices: originalComponents,
+                arcs: originalArcs,
+                source
+            });
+            console.log("P_Total:", P_Total);
+            const reachedVertices = new Set([...P_Total].map(String));
+            const outgoingArcs = originalArcs.filter(
+                arc => String(arc.fromVertexUID) === String(source.id)
+            );
+            kmax = outgoingArcs.filter(
+                arc => reachedVertices.has(String(arc.toVertexUID))
+            ).length;
         }
 
         console.log(`kmax = ${kmax}`);
@@ -1402,6 +1388,14 @@ export class Soundness {
                         continue;
                     }
 
+                    const outgoingArcs = pairOriginalArcs.filter(arc =>
+                        String(arc.fromVertexUID) === String(originalSplitVertex.id)
+                    );
+                    console.log(
+                        `[kmax] E-split candidate ${splitVertex.id} (${originalSplitVertex.id}) ` +
+                        `in ${pairKey}: ${outgoingArcs.length} outgoing original arcs in pair.`,
+                        outgoingArcs
+                    );
                     const reachableOriginalVertexIds = new Set([
                         String(originalSplitVertex.id)
                     ]);
@@ -1424,35 +1418,17 @@ export class Soundness {
                         reachableOriginalVertexIds.has(String(component.uid))
                     );
                     const splitVertexMap = buildVertexMap(splitComponents);
-                    const splitTraversalCache = {
-                        vertexMap: splitVertexMap,
+                    const { P_Total } = generateTotalContractionPath({
+                        vertices: splitComponents,
                         arcs: splitArcs,
-                        arcMap: buildArcMap(splitArcs),
-                        arcsMatrix: buildArcsAdjacencyMatrix(splitArcs),
-                        rbsMatrix: buildRBSMatrix(splitVertexMap, splitArcs),
-                    };
-
-                    const outgoingArcs = pairOriginalArcs.filter(arc =>
-                        String(arc.fromVertexUID) === String(originalSplitVertex.id)
+                        source: originalSplitVertex
+                    });
+                    console.log("P_Total:", P_Total);
+                    const contractedVertexIds = new Set(
+                        [...P_Total].map(vertexId => String(vertexId))
                     );
-                    console.log(
-                        `[kmax] E-split candidate ${splitVertex.id} (${originalSplitVertex.id}) ` +
-                        `in ${pairKey}: ${outgoingArcs.length} outgoing original arcs in pair.`,
-                        outgoingArcs
-                    );
-                    const states = {
-                        T: {},
-                        CTIndicator: {},
-                        path: [originalSplitVertex.id],
-                        activityProfile: {},
-                        tor: {}
-                    };
                     for (const arc of outgoingArcs) {
-                        const traversable = checkArc(
-                            { arcUID: arc.uid },
-                            states,
-                            splitTraversalCache
-                        );
+                        const traversable = contractedVertexIds.has(String(arc.toVertexUID));
                         console.log(
                             `[kmax] E-split arc ${arc.uid} (${arc.fromVertexUID} -> ${arc.toVertexUID}) ` +
                             `in ${pairKey}: traversable=${traversable}.`
