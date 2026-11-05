@@ -18,7 +18,7 @@ export function startURLDownload(filename, url) {
 }
 
 export function sanitizeForFilename(str) {
-    return str.replace(/[^A-Za-z0-9_\-]+/g, "").trim();
+    return str.replace(/[^A-Za-z0-9_\- ]+/g, "").trim();
 }
 
 /**
