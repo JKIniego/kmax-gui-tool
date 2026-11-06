@@ -1302,17 +1302,30 @@ export class Soundness {
                 const pairVertexIds = new Set(
                     [...reachableFromSplit].filter(vertexId => canReachJoin.has(vertexId))
                 );
-                const pairVertices = new Map(
-                    rdlt.vertices
-                        .filter(vertex => pairVertexIds.has(String(vertex.id)))
-                        .map(vertex => [vertex.id, vertex])
-                );
-                const pairEdges = rdlt.edges.filter(edge =>
+                const isPairEdge = edge =>
                     pairVertexIds.has(String(edge.from.id)) &&
-                    pairVertexIds.has(String(edge.to.id))
-                );
+                    pairVertexIds.has(String(edge.to.id));
+                const outgoingEdgeCounts = new Map();
+                const incomingEdgeCounts = new Map();
+                const outgoingConstraintsByVertex = new Map();
+                const incomingConstraintsByVertex = new Map();
+                for (const edge of rdlt.edges) {
+                    if (!isPairEdge(edge)) continue;
+                    const fromId = String(edge.from.id);
+                    const toId = String(edge.to.id);
+                    outgoingEdgeCounts.set(fromId, (outgoingEdgeCounts.get(fromId) ?? 0) + 1);
+                    incomingEdgeCounts.set(toId, (incomingEdgeCounts.get(toId) ?? 0) + 1);
+                    if (!outgoingConstraintsByVertex.has(fromId)) {
+                        outgoingConstraintsByVertex.set(fromId, new Set());
+                    }
+                    outgoingConstraintsByVertex.get(fromId).add(edge.constraint ?? "");
+                    if (!incomingConstraintsByVertex.has(toId)) {
+                        incomingConstraintsByVertex.set(toId, new Set());
+                    }
+                    incomingConstraintsByVertex.get(toId).add(edge.constraint ?? "");
+                }
 
-                if (pairVertices.size === 0) {
+                if (pairVertexIds.size === 0) {
                     splitJoins.push({
                         level,
                         pair: pairKey,
@@ -1325,7 +1338,8 @@ export class Soundness {
                     continue;
                 }
                 const originalVerticesByPairId = new Map();
-                for (const pairVertex of pairVertices.values()) {
+                for (const pairVertex of rdlt.vertices) {
+                    if (!pairVertexIds.has(String(pairVertex.id))) continue;
                     const originalVertex = graph.vertices.find(vertex =>
                         vertex.name === pairVertex.name ||
                         vertex.name === pairVertex.id ||
@@ -1338,14 +1352,7 @@ export class Soundness {
                 const originalPairVertexIds = new Set(
                     [...originalVerticesByPairId.values()].map(vertex => String(vertex.id))
                 );
-                const pairOriginalComponents = originalComponents.filter(component =>
-                    originalPairVertexIds.has(String(component.uid))
-                );
-                const pairOriginalArcs = originalArcs.filter(arc =>
-                    originalPairVertexIds.has(String(arc.fromVertexUID)) &&
-                    originalPairVertexIds.has(String(arc.toVertexUID))
-                );
-                const cycleDetector = new Cycle(pairEdges.map((edge, index) => ({
+                const cycleDetector = new Cycle(rdlt.edges.filter(isPairEdge).map((edge, index) => ({
                     'r-id': edge.id ?? index,
                     arc: `${edge.from.id}, ${edge.to.id}`
                 })));
@@ -1374,15 +1381,13 @@ export class Soundness {
                         })
                 );
 
-                const splitVertices = [...pairVertices.values()].filter(vertex =>
-                    pairEdges.filter(edge => edge.from.id === vertex.id).length > 1
+                const splitVertices = rdlt.vertices.filter(vertex =>
+                    pairVertexIds.has(String(vertex.id)) &&
+                    (outgoingEdgeCounts.get(String(vertex.id)) ?? 0) > 1
                 );
                 const eligibleSplitVertices = splitVertices.filter(splitVertex => {
-                    const outgoingConstraints = new Set(
-                        pairEdges
-                            .filter(edge => edge.from.id === splitVertex.id)
-                            .map(edge => edge.constraint ?? "")
-                    );
+                    const outgoingConstraints =
+                        outgoingConstraintsByVertex.get(String(splitVertex.id)) ?? new Set();
                     const hasMixedConstraints = outgoingConstraints.size > 1 &&
                         (outgoingConstraints.has("") || outgoingConstraints.has("ε") ||
                             outgoingConstraints.has("epsilon") || outgoingConstraints.has("E")) &&
@@ -1407,7 +1412,9 @@ export class Soundness {
                         continue;
                     }
 
-                    const outgoingArcs = pairOriginalArcs.filter(arc =>
+                    const outgoingArcs = originalArcs.filter(arc =>
+                        originalPairVertexIds.has(String(arc.fromVertexUID)) &&
+                        originalPairVertexIds.has(String(arc.toVertexUID)) &&
                         String(arc.fromVertexUID) === String(originalSplitVertex.id)
                     );
                     console.log(
@@ -1421,19 +1428,26 @@ export class Soundness {
                     const reachableQueue = [String(originalSplitVertex.id)];
                     for (let index = 0; index < reachableQueue.length; index++) {
                         const currentId = reachableQueue[index];
-                        for (const arc of pairOriginalArcs) {
-                            if (String(arc.fromVertexUID) !== currentId) continue;
+                        for (const arc of originalArcs) {
+                            if (
+                                !originalPairVertexIds.has(String(arc.fromVertexUID)) ||
+                                !originalPairVertexIds.has(String(arc.toVertexUID)) ||
+                                String(arc.fromVertexUID) !== currentId
+                            ) continue;
                             const nextId = String(arc.toVertexUID);
                             if (reachableOriginalVertexIds.has(nextId)) continue;
                             reachableOriginalVertexIds.add(nextId);
                             reachableQueue.push(nextId);
                         }
                     }
-                    const splitArcs = pairOriginalArcs.filter(arc =>
+                    const splitArcs = originalArcs.filter(arc =>
+                        originalPairVertexIds.has(String(arc.fromVertexUID)) &&
+                        originalPairVertexIds.has(String(arc.toVertexUID)) &&
                         reachableOriginalVertexIds.has(String(arc.fromVertexUID)) &&
                         reachableOriginalVertexIds.has(String(arc.toVertexUID))
                     );
-                    const splitComponents = pairOriginalComponents.filter(component =>
+                    const splitComponents = originalComponents.filter(component =>
+                        originalPairVertexIds.has(String(component.uid)) &&
                         reachableOriginalVertexIds.has(String(component.uid))
                     );
                     const splitVertexMap = buildVertexMap(splitComponents);
@@ -1484,16 +1498,14 @@ export class Soundness {
 
                 let mergingJoins = 0;
                 let separatingJoins = 0;
-                const joinVertices = [...pairVertices.values()].filter(vertex =>
+                const joinVertices = rdlt.vertices.filter(vertex =>
+                    pairVertexIds.has(String(vertex.id)) &&
                     !cycleVertices.has(String(vertex.id)) &&
-                    pairEdges.filter(edge => edge.to.id === vertex.id).length > 1
+                    (incomingEdgeCounts.get(String(vertex.id)) ?? 0) > 1
                 );
                 for (const joinVertex of joinVertices) {
-                    const incomingConstraints = new Set(
-                        pairEdges
-                            .filter(edge => edge.to.id === joinVertex.id)
-                            .map(edge => edge.constraint ?? "")
-                    );
+                    const incomingConstraints =
+                        incomingConstraintsByVertex.get(String(joinVertex.id)) ?? new Set();
                     const joinType = incomingConstraints.size > 1
                         ? (incomingConstraints.has("") ? "MIX" : "AND")
                         : "OR";
