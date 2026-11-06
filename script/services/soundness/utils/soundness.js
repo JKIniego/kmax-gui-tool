@@ -1126,9 +1126,8 @@ export class Soundness {
      *   1. Deadlock Tolerance (Weak Soundness) – verified via WRSVA (loop-safe NCAs,
      *      safe CAs, weakened JOIN-safe L-values, and escape contraction paths).
      *   2. Impedance-Free L-values – all arc reusability limits satisfy L(x, y) >= kmax.
-     *   3. kmax-Ensuring Gateway Balance – for each EVSA graph, split-join
-     *      pairs identify its unique split and join vertices, which are counted
-     *      once and checked globally against:
+     *   3. kmax-Ensuring – for each EVSA graph, split-join pairs identify its unique split
+     *      and join vertices, which are counted once and checked against:
      *      - Merging joins: Jm = ceil(|Esplit| / 2) - kmax + 1
      *      - Separating joins: Js <= kmax - 1
      *
@@ -1332,8 +1331,6 @@ export class Soundness {
 
                 return !hasMixedConstraints;
             });
-            console.log("Did pass through");
-            console.log(eligibleSplitVertices);
 
             let esplits = 0;
             const countedESplitArcs = [];
@@ -1384,7 +1381,7 @@ export class Soundness {
                 }
             }
             console.log(
-                `[kmax] E-splits for EVSA level L${level} (${levelPairKey}): ${esplits}`,
+                `[kmax] E-splits for level L${level} (${levelPairKey}): ${esplits}`,
                 countedESplitArcs
             );
 
