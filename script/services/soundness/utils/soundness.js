@@ -1355,12 +1355,22 @@ export class Soundness {
                         .flatMap(cycle => cycle.flat())
                         .map(vertexId => String(vertexId))
                 );
+                const originalVertexIdsByPairVertexId = new Map(
+                    [...originalVerticesByPairId].map(([pairVertexId, originalVertex]) => [
+                        String(pairVertexId),
+                        String(originalVertex.id)
+                    ])
+                );
                 const loopingArcKeys = new Set(
                     detectedCycles
                         .filter(cycle => cycle.length > 0)
-                        .map(cycle => {
+                        .flatMap(cycle => {
                             const [from, to] = cycle[cycle.length - 1];
-                            return `${from}->${to}`;
+                            const originalFromId = originalVertexIdsByPairVertexId.get(String(from));
+                            const originalToId = originalVertexIdsByPairVertexId.get(String(to));
+                            return originalFromId !== undefined && originalToId !== undefined
+                                ? [`${originalFromId}->${originalToId}`]
+                                : [];
                         })
                 );
 
