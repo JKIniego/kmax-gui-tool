@@ -89,12 +89,13 @@ export default class VERResultTabManager {
       });
     }
 
-    const exportKmaxReportButton = this.#rootElement.querySelector(
-      "button[data-subaction='export-kmax-report']",
-    );
-    exportKmaxReportButton.addEventListener("click", () => {
-      this.#parentManager.exportKmaxReport();
-    });
+    // Export Results button is temporarily disabled in the verification template.
+    // const exportKmaxReportButton = this.#rootElement.querySelector(
+    //   "button[data-subaction='export-kmax-report']",
+    // );
+    // exportKmaxReportButton.addEventListener("click", () => {
+    //   this.#parentManager.exportKmaxReport();
+    // });
 
     this.#view.conclusion.root =
       this.#rootElement.querySelector(".status-chip");
@@ -169,18 +170,20 @@ export default class VERResultTabManager {
       evaluation: {
         conclusion,
         criteria,
+        kmax,
         splitJoins,
         violating,
         violatingRemarks,
       },
     } = instance;
-    const exportKmaxReportButton = this.#rootElement.querySelector(
-      "button[data-subaction='export-kmax-report']",
-    );
-    exportKmaxReportButton.classList.toggle(
-      "hidden",
-      !this.#parentManager.canExportKmaxReport,
-    );
+    // Keep this toggle alongside the button handler for when export is restored.
+    // const exportKmaxReportButton = this.#rootElement.querySelector(
+    //   "button[data-subaction='export-kmax-report']",
+    // );
+    // exportKmaxReportButton.classList.toggle(
+    //   "hidden",
+    //   !this.#parentManager.canExportKmaxReport,
+    // );
 
     // Setup conclusion chip
     if (conclusion.pass) {
@@ -222,25 +225,30 @@ export default class VERResultTabManager {
     const violatingSplitJoins = splitJoins?.filter((splitJoin) => !splitJoin.pass) || [];
     if (violatingSplitJoins.length > 0) {
       splitJoinsSection.classList.remove("hidden");
-      for (const splitJoin of violatingSplitJoins) {
-        const pairVertices = splitJoin.vertices || [];
-        const splitIdentifier = pairVertices[0] !== undefined
-          ? this.#parentManager.getVertexIdentifier(pairVertices[0])
-          : null;
-        const joinIdentifier = pairVertices[1] !== undefined
-          ? this.#parentManager.getVertexIdentifier(pairVertices[1])
-          : null;
-        const pairContent = splitIdentifier && joinIdentifier
-          ? [
-            `L${splitJoin.level}: `,
-            buildVertexTagElement(splitIdentifier),
-            " → ",
-            buildVertexTagElement(joinIdentifier),
-          ]
-          : [`L${splitJoin.level}, ${splitJoin.pair}`];
+      const failingLevels = new Map(
+        violatingSplitJoins.map((splitJoin) => [splitJoin.level, splitJoin]),
+      );
+      const formatCalculation = (value) =>
+        Number.isFinite(value) ? String(value) : "-";
+
+      for (const splitJoin of failingLevels.values()) {
+        const expectedJm = splitJoin.expectedMergingJoins;
+        const expectedJs = splitJoin.maxSeparatingJoins;
+        const jmCalculation = Number.isFinite(splitJoin.esplits) && Number.isFinite(kmax)
+          ? `ceil(${splitJoin.esplits} / 2) - ${kmax} + 1 = ${formatCalculation(expectedJm)}`
+          : formatCalculation(expectedJm);
+        const jsCalculation = Number.isFinite(kmax)
+          ? `${kmax} - 1 = ${formatCalculation(expectedJs)}`
+          : formatCalculation(expectedJs);
+        const calculationSummary =
+          `Esplits: ${formatCalculation(splitJoin.esplits)}; ` +
+          `Jm: calculated ${jmCalculation}, counted ${formatCalculation(splitJoin.mergingJoins)}; ` +
+          `Js: calculated maximum ${jsCalculation}, counted ${formatCalculation(splitJoin.separatingJoins)}` +
+          (splitJoin.reason ? `; ${splitJoin.reason}` : "");
 
         splitJoinsTableBody.appendChild(buildElement("tr", {}, [
-          buildElement("td", {}, pairContent),
+          buildElement("td", {}, [`L${splitJoin.level}`]),
+          buildElement("td", {}, [calculationSummary]),
         ]));
       }
     } else {
