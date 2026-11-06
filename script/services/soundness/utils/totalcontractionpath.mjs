@@ -41,19 +41,6 @@ function buildContractionMatrices(vertices, arcs) {
     return { RV_adj, RV_C };
 }
 
-function isFeasibleContraction(RV_adj, RV_C, vertices, x, y) {
-    const lhs = new Set(RV_C[x][y]);
-    lhs.add(EPSILON);
-
-    const rhs = new Set();
-    for (const u of vertices) {
-        if (u === x || RV_adj[u][y] < 1) continue;
-        for (const constraint of RV_C[u][y]) rhs.add(constraint);
-    }
-
-    return [...rhs].every(constraint => lhs.has(constraint));
-}
-
 /**
  * Apply one matrix contraction, absorbing y into x.
  * Returns new vertex, adjacency, and constraint matrices without mutating input.
@@ -144,7 +131,17 @@ export function generateTotalContractionPath(graphInput) {
             break;
         }
 
-        if (!isFeasibleContraction(RV_adj, RV_C, activeVertices, current, selected)) {
+        const lhs = new Set(RV_C[current][selected]);
+        lhs.add(EPSILON);
+
+        const rhs = new Set();
+        for (const u of activeVertices) {
+            if (u === current || RV_adj[u][selected] < 1) continue;
+            for (const constraint of RV_C[u][selected]) rhs.add(constraint);
+        }
+
+        const isFeasible = [...rhs].every(constraint => lhs.has(constraint));
+        if (!isFeasible) {
             infeasibleCandidates.add(selected);
             continue;
         }
