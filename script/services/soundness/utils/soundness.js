@@ -10,8 +10,7 @@ import { Activity } from '../models/Activity.js';
 import { CASExtractor } from './cas-extractor.js';
 import { GeneralizedImpedance } from './generalized-impedance.js';
 import { buildSplitJoinPairs } from './kmax.mjs';
-import { generateTotalContractionPath } from './totalcontractionpath.mjs';
-// No need to import visualizer here - it's used in soundness-service
+import { generateTotalContractionPath } from './total-contraction-path.mjs';
 
 /**
 * Utility class for verifying soundness properties.
