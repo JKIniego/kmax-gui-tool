@@ -1386,15 +1386,22 @@ export class Soundness {
 
             let mergingJoins = 0;
             let separatingJoins = 0;
-            const joinVertices = [...identifiedJoinVertices.values()].filter(vertex =>
-                !cycleVertices.has(String(vertex.id)) &&
-                rdlt.edges.filter(edge => String(edge.to.id) === String(vertex.id)).length > 1
-            );
-            for (const joinVertex of joinVertices) {
+            const joinVertices = [...identifiedJoinVertices.values()]
+                .map(vertex => ({
+                    vertex,
+                    incomingArcs: rdlt.edges.filter(edge =>
+                        String(edge.to.id) === String(vertex.id) &&
+                        contractedVertexIds.has(String(edge.from.id)) &&
+                        contractedVertexIds.has(String(edge.to.id))
+                    )
+                }))
+                .filter(({ vertex, incomingArcs }) =>
+                    !cycleVertices.has(String(vertex.id)) &&
+                    incomingArcs.length > 1
+                );
+            for (const { vertex: joinVertex, incomingArcs } of joinVertices) {
                 const incomingConstraints = new Set(
-                    rdlt.edges
-                        .filter(edge => String(edge.to.id) === String(joinVertex.id))
-                        .map(edge => edge.constraint ?? "")
+                    incomingArcs.map(edge => edge.constraint ?? "")
                 );
                 const joinType = incomingConstraints.size > 1
                     ? (incomingConstraints.has("") ? "MIX" : "AND")
