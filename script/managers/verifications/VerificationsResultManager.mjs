@@ -163,15 +163,6 @@ export class VerificationsResultManager {
         drawingManager.highlightVertex(vertexUID);
       }
 
-      const violatingSplitJoinVertices = new Set(
-        (instance.evaluation?.splitJoins || [])
-          .filter((splitJoin) => !splitJoin.pass)
-          .flatMap((splitJoin) => splitJoin.vertices || []),
-      );
-      for (const vertexUID of violatingSplitJoinVertices) {
-        drawingManager.highlightVertex(vertexUID);
-      }
-
       this.#drawingManagers.push(drawingManager);
     }
 
