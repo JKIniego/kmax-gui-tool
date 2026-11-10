@@ -1362,14 +1362,6 @@ export class Soundness {
                         .map(vertex => String(vertex.id))
                 );
 
-                const countedESplitArcs = subgraphArcs.filter(edge => {
-                    const arcKey = `${String(edge.from.id)}->${String(edge.to.id)}`;
-                    return eligibleSplitIds.has(String(edge.from.id)) &&
-                        !loopingArcKeys.has(arcKey) &&
-                        contractedVertexIds.has(String(edge.to.id));
-                });
-                const esplits = countedESplitArcs.length;
-
                 const joinVertices = subgraphVertices.filter(vertex => {
                     const incomingArcs = subgraphArcs.filter(edge =>
                         String(edge.to.id) === String(vertex.id) &&
@@ -1379,6 +1371,18 @@ export class Soundness {
                     return !cycleVertices.has(String(vertex.id)) &&
                         incomingArcs.length > 1;
                 });
+                const joinVertexIds = new Set(
+                    joinVertices.map(vertex => String(vertex.id))
+                );
+                const countedESplitArcs = subgraphArcs.filter(edge => {
+                    const arcKey = `${String(edge.from.id)}->${String(edge.to.id)}`;
+                    return eligibleSplitIds.has(String(edge.from.id)) &&
+                        !loopingArcKeys.has(arcKey) &&
+                        contractedVertexIds.has(String(edge.to.id)) &&
+                        !joinVertexIds.has(String(edge.to.id));
+                });
+                const esplits = countedESplitArcs.length;
+
                 let mergingJoins = 0;
                 let separatingJoins = 0;
                 for (const joinVertex of joinVertices) {
