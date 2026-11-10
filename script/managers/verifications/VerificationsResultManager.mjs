@@ -175,7 +175,8 @@ export class VerificationsResultManager {
   }
 
   get canExportKmaxReport() {
-    return this.#soundnessConfig?.notion === "kmax";
+    return this.#soundnessConfig?.notion === "kmax"
+      && this.result.instances[0]?.evaluation?.criteria?.[0]?.pass === true;
   }
 
   get canCheckKmax() {

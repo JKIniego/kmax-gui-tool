@@ -224,13 +224,18 @@ export default class VERResultTabManager {
       this.#view.splitJoins.table.querySelector("tbody");
     splitJoinsTableBody.innerHTML = "";
 
-    const violatingSplitJoins = splitJoins?.filter((splitJoin) => !splitJoin.pass) || [];
-    if (violatingSplitJoins.length > 0) {
+    if (this.#parentManager.canExportKmaxReport) {
       splitJoinsSection.classList.remove("hidden");
       const formatCalculation = (value) =>
         Number.isFinite(value) ? String(value) : "-";
 
-      for (const splitJoin of violatingSplitJoins) {
+      if (!splitJoins?.length) {
+        splitJoinsTableBody.appendChild(buildElement("tr", {}, [
+          buildElement("td", {}, ["No split-join pairs identified"]),
+        ]));
+      }
+
+      for (const splitJoin of splitJoins || []) {
         const expectedJm = splitJoin.expectedMergingJoins;
         const expectedJs = splitJoin.maxSeparatingJoins;
         const jmCalculation = Number.isFinite(splitJoin.esplits) && Number.isFinite(kmax)
@@ -243,6 +248,7 @@ export default class VERResultTabManager {
           `Esplits: ${formatCalculation(splitJoin.esplits)}; ` +
           `Jm: calculated ${jmCalculation}, counted ${formatCalculation(splitJoin.mergingJoins)}; ` +
           `Js: calculated maximum ${jsCalculation}, counted ${formatCalculation(splitJoin.separatingJoins)}` +
+          `; kmax-Ensuring: ${splitJoin.pass ? "Satisfied" : "Not satisfied"}` +
           (splitJoin.reason ? `; ${splitJoin.reason}` : "");
 
         splitJoinsTableBody.appendChild(buildElement("tr", {}, [
