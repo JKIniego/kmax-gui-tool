@@ -9,7 +9,7 @@ import { ActivityProfile } from '../models/ActivityProfile.js';
 import { Activity } from '../models/Activity.js';
 import { CASExtractor } from './cas-extractor.js';
 import { GeneralizedImpedance } from './generalized-impedance.js';
-import { buildSplitJoinPairs } from './kmax.mjs';
+import { buildSplitJoinPairs } from './kmax-split-join-pair.mjs';
 import { generateTotalContractionPath } from './total-contraction-path.mjs';
 
 /**
