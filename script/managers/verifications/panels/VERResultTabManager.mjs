@@ -251,13 +251,13 @@ export default class VERResultTabManager {
           Number.isFinite(expectedJs) &&
           splitJoin.separatingJoins <= expectedJs;
         const pairDetails = [
-          ["E-splits", formatCalculation(splitJoin.esplits)],
+          ["Eₛₚₗᵢₜ", formatCalculation(splitJoin.esplits)],
           [
-            "Merging joins (Jm)",
+            "Merging joins (Jₘ)",
             `${formatCalculation(splitJoin.mergingJoins)} counted; expected ${formatCalculation(expectedJm)} (${jmFormula}) - ${mergingPass ? "Pass" : "Fail"}`,
           ],
           [
-            "Separating joins (Js)",
+            "Separating joins (Jₛ)",
             `${formatCalculation(splitJoin.separatingJoins)} counted; maximum ${formatCalculation(expectedJs)} (${jsFormula}) - ${separatingPass ? "Pass" : "Fail"}`,
           ],
         ];

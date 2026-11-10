@@ -7,11 +7,11 @@ const TABLE_WIDTH = PAGE_WIDTH - LEFT_MARGIN * 2;
 const COLUMN_WIDTHS = [160, 75, 100, 100, 100, 100, 95];
 const HEADER = [
   "EVSA / Pair (subgraph)",
-  "E-splits",
-  "Expected Jm",
-  "Counted Jm",
-  "Maximum Js",
-  "Counted Js",
+  "Eₛₚₗᵢₜ",
+  "Expected Jₘ",
+  "Counted Jₘ",
+  "Maximum Jₛ",
+  "Counted Jₛ",
   "Result",
 ];
 const FONT_SIZE = 8;
@@ -91,7 +91,7 @@ export default class KmaxReportExportManager {
       pages.push(page);
       addText(
         page,
-        "kmax-Ensuring Analysis (per split-join subgraph)",
+        "kᵐᵃˣ-ensuring Analysis (per split-join subgraph)",
         LEFT_MARGIN,
         PAGE_HEIGHT - 42,
         16,
