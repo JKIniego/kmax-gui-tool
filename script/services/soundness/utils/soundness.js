@@ -1339,28 +1339,7 @@ export class Soundness {
                         String(edge.from.id) === String(vertex.id)
                     ).length > 1
                 );
-                const eligibleSplitIds = new Set(
-                    splitVertices
-                        .filter(splitVertex => {
-                            const outgoingConstraints = new Set(
-                                subgraphArcs
-                                    .filter(edge =>
-                                        String(edge.from.id) === String(splitVertex.id)
-                                    )
-                                    .map(edge => edge.constraint ?? "")
-                            );
-                            const hasMixedConstraints = outgoingConstraints.size > 1 &&
-                                (outgoingConstraints.has("") || outgoingConstraints.has("ε") ||
-                                    outgoingConstraints.has("epsilon") ||
-                                    outgoingConstraints.has("E")) &&
-                                [...outgoingConstraints].some(constraint =>
-                                    constraint !== "" && constraint !== "ε" &&
-                                    constraint !== "epsilon" && constraint !== "E"
-                                );
-                            return !hasMixedConstraints;
-                        })
-                        .map(vertex => String(vertex.id))
-                );
+                const splitIds = new Set(splitVertices.map(vertex => String(vertex.id)));
 
                 const joinVertices = subgraphVertices.filter(vertex => {
                     const incomingArcs = subgraphArcs.filter(edge =>
@@ -1376,7 +1355,7 @@ export class Soundness {
                 );
                 const countedESplitArcs = subgraphArcs.filter(edge => {
                     const arcKey = `${String(edge.from.id)}->${String(edge.to.id)}`;
-                    return eligibleSplitIds.has(String(edge.from.id)) &&
+                    return splitIds.has(String(edge.from.id)) &&
                         !loopingArcKeys.has(arcKey) &&
                         contractedVertexIds.has(String(edge.to.id)) &&
                         !joinVertexIds.has(String(edge.to.id));
