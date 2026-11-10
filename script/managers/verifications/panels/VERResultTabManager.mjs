@@ -238,24 +238,56 @@ export default class VERResultTabManager {
       for (const splitJoin of splitJoins || []) {
         const expectedJm = splitJoin.expectedMergingJoins;
         const expectedJs = splitJoin.maxSeparatingJoins;
-        const jmCalculation = Number.isFinite(splitJoin.esplits) && Number.isFinite(kmax)
+        const jmFormula = Number.isFinite(splitJoin.esplits) && Number.isFinite(kmax)
           ? `ceil(${splitJoin.esplits} / 2) - ${kmax} + 1 = ${formatCalculation(expectedJm)}`
           : formatCalculation(expectedJm);
-        const jsCalculation = Number.isFinite(kmax)
+        const jsFormula = Number.isFinite(kmax)
           ? `${kmax} - 1 = ${formatCalculation(expectedJs)}`
           : formatCalculation(expectedJs);
-        const calculationSummary =
-          `Esplits: ${formatCalculation(splitJoin.esplits)}; ` +
-          `Jm: calculated ${jmCalculation}, counted ${formatCalculation(splitJoin.mergingJoins)}; ` +
-          `Js: calculated maximum ${jsCalculation}, counted ${formatCalculation(splitJoin.separatingJoins)}` +
-          `; kmax-Ensuring: ${splitJoin.pass ? "Satisfied" : "Not satisfied"}` +
-          (splitJoin.reason ? `; ${splitJoin.reason}` : "");
+        const mergingPass = Number.isFinite(splitJoin.mergingJoins) &&
+          Number.isFinite(expectedJm) &&
+          splitJoin.mergingJoins === expectedJm;
+        const separatingPass = Number.isFinite(splitJoin.separatingJoins) &&
+          Number.isFinite(expectedJs) &&
+          splitJoin.separatingJoins <= expectedJs;
+        const pairDetails = [
+          ["E-splits", formatCalculation(splitJoin.esplits)],
+          [
+            "Merging joins (Jm)",
+            `${formatCalculation(splitJoin.mergingJoins)} counted; expected ${formatCalculation(expectedJm)} (${jmFormula}) - ${mergingPass ? "Pass" : "Fail"}`,
+          ],
+          [
+            "Separating joins (Js)",
+            `${formatCalculation(splitJoin.separatingJoins)} counted; maximum ${formatCalculation(expectedJs)} (${jsFormula}) - ${separatingPass ? "Pass" : "Fail"}`,
+          ],
+        ];
+        const detailsTable = buildElement("table", {}, [
+          buildElement("tbody", {}, pairDetails.map(([label, value]) =>
+            buildElement("tr", {}, [
+              buildElement("th", {}, [label]),
+              buildElement("td", {}, [value]),
+            ]),
+          )),
+        ]);
+        const pairComponents = (splitJoin.vertices || [])
+          .map((vertexUID) => this.#parentManager.getVertexIdentifier(vertexUID))
+          .filter(Boolean);
+        const pairResult = splitJoin.pass ? "Satisfied" : "Not satisfied";
+        const pairSummary = buildElement("div", { classname: "vertex-tag" }, [
+          buildElement("span", {}, [`L${splitJoin.level} `]),
+          buildElement("span", {}, [
+            pairComponents.length
+              ? pairComponents.join(" → ")
+              : splitJoin.pair || "Unidentified pair",
+          ]),
+          buildElement("span", {}, [` - kᵐᵃˣ-ensuring: ${pairResult}`]),
+        ]);
+        if (splitJoin.reason) {
+          pairSummary.append(buildElement("div", {}, [splitJoin.reason]));
+        }
 
         splitJoinsTableBody.appendChild(buildElement("tr", {}, [
-          buildElement("td", {}, [
-            `L${splitJoin.level}, ${splitJoin.pair || "Unidentified pair"}`,
-          ]),
-          buildElement("td", {}, [calculationSummary]),
+          buildElement("td", { colspan: "2" }, [pairSummary, detailsTable]),
         ]));
       }
     } else {

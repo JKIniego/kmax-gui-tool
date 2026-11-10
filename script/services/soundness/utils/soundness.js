@@ -1435,7 +1435,7 @@ export class Soundness {
                 splitJoins.push(result);
 
                 console.log(
-                    `[kmax] L${level} split-join subgraph ${pairKey}: ` +
+                    `L${level} split-join subgraph ${pairKey}: ` +
                     `${pass ? "PASS" : "FAIL"}; Esplits=${esplits}, ` +
                     `Jm=${mergingJoins}/${expectedMergingJoins}, ` +
                     `Js=${separatingJoins}/${maxSeparatingJoins} maximum` +
