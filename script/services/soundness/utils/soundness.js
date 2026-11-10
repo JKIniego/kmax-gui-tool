@@ -1244,223 +1244,212 @@ export class Soundness {
 
             
             const splitJoinPairs = buildSplitJoinPairs(rdlt);
-            console.log(splitJoinPairs);
+            console.log("Split-Join Pairs and All Disjoint Paths", splitJoinPairs);
 
             if (splitJoinPairs.siblingPaths.size === 0) {
                 level++;
                 continue;
             }
 
-            // Pairs identify gateways; the equations below use unique gateway
-            // vertices across this EVSA graph, not separate counts per pair.
             const pairEntries = [...splitJoinPairs.siblingPaths];
-            const allPaths = pairEntries.flatMap(([, paths]) => paths);
-            const levelPairKey = pairEntries.map(([pairKey]) => pairKey).join(", ");
-            const identifiedSplitVertices = new Map();
-            const identifiedJoinVertices = new Map();
-            const pairDetails = [];
+            const pairResults = [];
             for (const [pairKey, paths] of pairEntries) {
                 const pairSplit = paths[0]?.[0];
                 const pairJoin = paths[0]?.[paths[0].length - 1];
+                let reason;
+
                 if (!pairSplit || !pairJoin) {
-                    pairDetails.push({ pair: pairKey, vertices: [] });
-                    continue;
+                    reason = `Unable to identify split and join vertices for ${pairKey}.`;
                 }
-                identifiedSplitVertices.set(String(pairSplit.id), pairSplit);
-                identifiedJoinVertices.set(String(pairJoin.id), pairJoin);
-                pairDetails.push({ pair: pairKey, split: pairSplit, join: pairJoin });
-            }
 
-            console.log(identifiedSplitVertices);
-            console.log(identifiedJoinVertices);
-
-            const pairVertexIds = new Set();
-            for (const path of allPaths) {
-                for (const vertex of path) {
-                    pairVertexIds.add(String(vertex.id));
-                }
-            }
-            const originalVerticesByPairId = new Map();
-            for (const pairVertex of rdlt.vertices) {
-                if (!pairVertexIds.has(String(pairVertex.id))) continue;
-                const originalVertex = graph.vertices.find(vertex =>
-                    vertex.name === pairVertex.name ||
-                    vertex.name === pairVertex.id ||
-                    String(vertex.id) === String(pairVertex.id)
+                const allPathsForPair = splitJoinPairs.allDisjointPaths.filter(path =>
+                    String(path[0]?.id) === String(pairSplit?.id) &&
+                    String(path[path.length - 1]?.id) === String(pairJoin?.id)
                 );
-                if (originalVertex) {
-                    originalVerticesByPairId.set(pairVertex.id, originalVertex);
+                if (!reason && allPathsForPair.length === 0) {
+                    reason = `Unable to find disjoint paths for split-join pair ${pairKey}.`;
                 }
-            }
-            const cycleDetector = new Cycle(rdlt.edges.map((edge, index) => ({
-                'r-id': edge.id ?? index,
-                arc: `${edge.from.id}, ${edge.to.id}`
-            })));
-            const detectedCycles = cycleDetector.findCycles(cycleDetector.graph);
-            const cycleVertices = new Set(
-                detectedCycles
-                    .flatMap(cycle => cycle.flat())
-                    .map(vertexId => String(vertexId))
-            );
-            const loopingArcKeys = new Set(
-                detectedCycles
-                    .filter(cycle => cycle.length > 0)
-                    .flatMap(cycle => {
-                        const [from, to] = cycle[cycle.length - 1];
-                        return [`${String(from)}->${String(to)}`];
-                    })
-            );
+                console.log("Final subgraph paths:", allPathsForPair);
 
-            const splitVertices = [...identifiedSplitVertices.values()].filter(vertex =>
-                rdlt.edges.filter(edge => String(edge.from.id) === String(vertex.id)).length > 1
-            );
-            const eligibleSplitVertices = splitVertices.filter(splitVertex => {
-                const outgoingConstraints = new Set(
-                    rdlt.edges
-                        .filter(edge => String(edge.from.id) === String(splitVertex.id))
-                        .map(edge => edge.constraint ?? "")
+                const pathVertexIds = new Set();
+                for (const path of allPathsForPair) {
+                    for (const vertex of path) {
+                        pathVertexIds.add(String(vertex.id));
+                    }
+                }
+                let addedPathVertices = true;
+                while (addedPathVertices) {
+                    addedPathVertices = false;
+                    for (const path of splitJoinPairs.allDisjointPaths) {
+                        const startId = String(path[0]?.id);
+                        const endId = String(path[path.length - 1]?.id);
+                        if (!pathVertexIds.has(startId) || !pathVertexIds.has(endId)) {
+                            continue;
+                        }
+                        for (const vertex of path) {
+                            const vertexId = String(vertex.id);
+                            if (pathVertexIds.has(vertexId)) continue;
+                            pathVertexIds.add(vertexId);
+                            addedPathVertices = true;
+                        }
+                    }
+                }
+                console.log("Final subgraph paths vertices:", pathVertexIds);
+
+                const subgraphVertices = rdlt.vertices.filter(vertex =>
+                    pathVertexIds.has(String(vertex.id))
                 );
-                const hasMixedConstraints = outgoingConstraints.size > 1 &&
-                    (outgoingConstraints.has("") || outgoingConstraints.has("ε") ||
-                        outgoingConstraints.has("epsilon") || outgoingConstraints.has("E")) &&
-                    [...outgoingConstraints].some(constraint =>
-                        constraint !== "" && constraint !== "ε" &&
-                        constraint !== "epsilon" && constraint !== "E"
-                    );
-
-                return !hasMixedConstraints;
-            });
-
-            let esplits = 0;
-            const countedESplitArcs = [];
-            const splitVertexIds = new Set(
-                eligibleSplitVertices.map(vertex => String(vertex.id))
-            );
-            const splitArcs = rdlt.edges.filter(edge =>
-                splitVertexIds.has(String(edge.from.id))
-            );
-            const { source: levelSource } = utils.getSourceAndSinkVertices(rdlt);
-            if (!levelSource) {
-                throw new Error(`Unable to identify source vertex for EVSA level L${level}.`);
-            }
-            const { P_Total } = generateTotalContractionPath({
-                vertices: rdlt.vertices,
-                arcs: rdlt.edges,
-                source: levelSource
-            });
-            console.log(`[kmax] P_Total for level L${level}:`, P_Total);
-            const contractedVertexIds = new Set(
-                [...P_Total].map(vertexId => String(vertexId))
-            );
-            for (const arc of splitArcs) {
-                const arcKey = `${String(arc.from.id)}->${String(arc.to.id)}`;
-                if (loopingArcKeys.has(arcKey)) {
-                    console.log(
-                        `[kmax] Excluding looping E-split arc ${arc.id} ` +
-                        `(${arc.from.id} -> ${arc.to.id}) in L${level}.`
-                    );
-                    continue;
-                }
-
-                const traversable = contractedVertexIds.has(String(arc.to.id));
-                console.log(
-                    `[kmax] E-split arc ${arc.id} (${arc.from.id} -> ${arc.to.id}) ` +
-                    `in L${level}: traversable in level P_Total=${traversable}.`
+                const subgraphArcs = rdlt.edges.filter(edge =>
+                    pathVertexIds.has(String(edge.from.id)) &&
+                    pathVertexIds.has(String(edge.to.id))
                 );
-                if (traversable) {
-                    esplits++;
-                    const fromIdentifier = arc.from.name ?? arc.from.id;
-                    const toIdentifier = arc.to.name ?? arc.to.id;
-                    const countedArc = `${fromIdentifier}->${toIdentifier}`;
-                    countedESplitArcs.push(countedArc);
-                    console.log(
-                        `[kmax] Counted E-split ${esplits} for L${level}: ` +
-                        `${countedArc} (arc ${arc.id}).`
-                    );
+                if (!reason && subgraphArcs.length === 0) {
+                    reason = `No RDLT arcs found for split-join pair ${pairKey}.`;
                 }
-            }
-            console.log(
-                `[kmax] E-splits for level L${level} (${levelPairKey}): ${esplits}`,
-                countedESplitArcs
-            );
 
-            let mergingJoins = 0;
-            let separatingJoins = 0;
-            const joinVertices = [...identifiedJoinVertices.values()]
-                .map(vertex => ({
-                    vertex,
-                    incomingArcs: rdlt.edges.filter(edge =>
+                const subgraphCycles = new Cycle(subgraphArcs.map((edge, index) => ({
+                    "r-id": edge.id ?? index,
+                    arc: `${edge.from.id}, ${edge.to.id}`
+                })));
+                const detectedCycles = subgraphCycles.findCycles(subgraphCycles.graph);
+                const cycleVertices = new Set(
+                    detectedCycles.flatMap(cycle => cycle.flat()).map(String)
+                );
+                const loopingArcKeys = new Set(
+                    detectedCycles
+                        .filter(cycle => cycle.length > 0)
+                        .map(cycle => {
+                            const [from, to] = cycle[cycle.length - 1];
+                            return `${String(from)}->${String(to)}`;
+                        })
+                );
+
+                let contractedVertexIds = new Set();
+                if (pairSplit) {
+                    const { P_Total } = generateTotalContractionPath({
+                        vertices: subgraphVertices,
+                        arcs: subgraphArcs,
+                        source: pairSplit
+                    });
+                    contractedVertexIds = new Set(P_Total.map(String));
+                }
+
+                const splitVertices = subgraphVertices.filter(vertex =>
+                    subgraphArcs.filter(edge =>
+                        String(edge.from.id) === String(vertex.id)
+                    ).length > 1
+                );
+                const eligibleSplitIds = new Set(
+                    splitVertices
+                        .filter(splitVertex => {
+                            const outgoingConstraints = new Set(
+                                subgraphArcs
+                                    .filter(edge =>
+                                        String(edge.from.id) === String(splitVertex.id)
+                                    )
+                                    .map(edge => edge.constraint ?? "")
+                            );
+                            const hasMixedConstraints = outgoingConstraints.size > 1 &&
+                                (outgoingConstraints.has("") || outgoingConstraints.has("ε") ||
+                                    outgoingConstraints.has("epsilon") ||
+                                    outgoingConstraints.has("E")) &&
+                                [...outgoingConstraints].some(constraint =>
+                                    constraint !== "" && constraint !== "ε" &&
+                                    constraint !== "epsilon" && constraint !== "E"
+                                );
+                            return !hasMixedConstraints;
+                        })
+                        .map(vertex => String(vertex.id))
+                );
+
+                const countedESplitArcs = subgraphArcs.filter(edge => {
+                    const arcKey = `${String(edge.from.id)}->${String(edge.to.id)}`;
+                    return eligibleSplitIds.has(String(edge.from.id)) &&
+                        !loopingArcKeys.has(arcKey) &&
+                        contractedVertexIds.has(String(edge.to.id));
+                });
+                const esplits = countedESplitArcs.length;
+
+                const joinVertices = subgraphVertices.filter(vertex => {
+                    const incomingArcs = subgraphArcs.filter(edge =>
                         String(edge.to.id) === String(vertex.id) &&
                         contractedVertexIds.has(String(edge.from.id)) &&
                         contractedVertexIds.has(String(edge.to.id))
-                    )
-                }))
-                .filter(({ vertex, incomingArcs }) =>
-                    !cycleVertices.has(String(vertex.id)) &&
-                    incomingArcs.length > 1
-                );
-            for (const { vertex: joinVertex, incomingArcs } of joinVertices) {
-                const incomingConstraints = new Set(
-                    incomingArcs.map(edge => edge.constraint ?? "")
-                );
-                const joinType = incomingConstraints.size > 1
-                    ? (incomingConstraints.has("") ? "MIX" : "AND")
-                    : "OR";
-
-                if (joinType === "AND") {
-                    mergingJoins++;
-                } else {
-                    separatingJoins++;
+                    );
+                    return !cycleVertices.has(String(vertex.id)) &&
+                        incomingArcs.length > 1;
+                });
+                let mergingJoins = 0;
+                let separatingJoins = 0;
+                for (const joinVertex of joinVertices) {
+                    const incomingConstraints = new Set(
+                        subgraphArcs
+                            .filter(edge =>
+                                String(edge.to.id) === String(joinVertex.id) &&
+                                contractedVertexIds.has(String(edge.from.id)) &&
+                                contractedVertexIds.has(String(edge.to.id))
+                            )
+                            .map(edge => edge.constraint ?? "")
+                    );
+                    const joinType = incomingConstraints.size > 1
+                        ? (incomingConstraints.has("") ? "MIX" : "AND")
+                        : "OR";
+                    if (joinType === "AND") mergingJoins++;
+                    else separatingJoins++;
                 }
+
+                const originalVerticesByPairId = new Map();
+                for (const pairVertex of [pairSplit, pairJoin].filter(Boolean)) {
+                    const originalVertex = graph.vertices.find(vertex =>
+                        vertex.name === pairVertex.name ||
+                        vertex.name === pairVertex.id ||
+                        String(vertex.id) === String(pairVertex.id)
+                    );
+                    if (originalVertex) {
+                        originalVerticesByPairId.set(String(pairVertex.id), originalVertex);
+                    }
+                }
+                const pairVertices = [pairSplit, pairJoin]
+                    .filter(Boolean)
+                    .map(vertex => originalVerticesByPairId.get(String(vertex.id))?.id)
+                    .filter(Number.isFinite);
+
+                const expectedMergingJoins = Math.ceil(esplits / 2) - kmax + 1;
+                const maxSeparatingJoins = kmax - 1;
+                const pass = mergingJoins === expectedMergingJoins &&
+                    separatingJoins <= maxSeparatingJoins &&
+                    !reason;
+                const result = {
+                    level,
+                    pair: pairKey,
+                    vertices: pairVertices,
+                    mergingJoins,
+                    separatingJoins,
+                    esplits,
+                    expectedMergingJoins,
+                    maxSeparatingJoins,
+                    pass,
+                    reason
+                };
+                pairResults.push(result);
+                splitJoins.push(result);
+
+                console.log(
+                    `[kmax] L${level} split-join subgraph ${pairKey}: ` +
+                    `${pass ? "PASS" : "FAIL"}; Esplits=${esplits}, ` +
+                    `Jm=${mergingJoins}/${expectedMergingJoins}, ` +
+                    `Js=${separatingJoins}/${maxSeparatingJoins} maximum` +
+                    (reason ? `; ${reason}` : "")
+                );
             }
 
-            const pairs = pairDetails.map(pair => ({
-                pair: pair.pair,
-                vertices: pair.split && pair.join
-                    ? [pair.split, pair.join]
-                        .map(vertex => originalVerticesByPairId.get(vertex.id)?.id)
-                        .filter(vertexId => Number.isFinite(vertexId))
-                    : pair.vertices
-            }));
-            const invalidPair = pairDetails.find(pair => !pair.split || !pair.join);
-            const reason = invalidPair
-                ? `Unable to identify split and join vertices for ${invalidPair.pair}.`
-                : undefined;
-            const expectedMergingJoins = Math.ceil(esplits / 2) - kmax + 1;
-            const maxSeparatingJoins = kmax - 1;
-            const isKmaxEnsuring =
-                mergingJoins === expectedMergingJoins &&
-                separatingJoins <= maxSeparatingJoins &&
-                !reason;
-
+            const isKmaxEnsuring = pairResults.every(pair => pair.pass);
             criteria.push({
                 pass: isKmaxEnsuring,
                 description: isKmaxEnsuring
                     ? `kᵐᵃˣ-ensuring (L${level}): Satisfied`
                     : `kᵐᵃˣ-ensuring (L${level}): Not satisfied`
             });
-
-            for (const pair of pairs) {
-                splitJoins.push({
-                    level,
-                    pair: pair.pair,
-                    vertices: pair.vertices,
-                    mergingJoins,
-                    separatingJoins,
-                    esplits,
-                    expectedMergingJoins,
-                    maxSeparatingJoins,
-                    pass: isKmaxEnsuring,
-                    reason
-                });
-            }
-
-            console.log(
-                `[kmax] Level L${level} kmax-ensuring: ${isKmaxEnsuring ? "PASS" : "FAIL"}; ` +
-                `Esplits=${esplits}, Jm=${mergingJoins}/${expectedMergingJoins}, ` +
-                `Js=${separatingJoins}/${maxSeparatingJoins} maximum` +
-                (reason ? `; ${reason}` : "")
-            );
 
             level++;
         }

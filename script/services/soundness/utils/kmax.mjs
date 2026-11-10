@@ -1,4 +1,4 @@
-﻿import { findSiblings } from "../../well-handledness/src/Siblings.js";
+import { findSiblings } from "../../well-handledness/src/Siblings.js";
 
 export function buildSplitJoinPairs(graph) {
     if (!graph || !graph.vertices || !graph.edges) {

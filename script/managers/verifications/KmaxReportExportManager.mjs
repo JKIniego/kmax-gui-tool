@@ -6,7 +6,7 @@ const LEFT_MARGIN = 56;
 const TABLE_WIDTH = PAGE_WIDTH - LEFT_MARGIN * 2;
 const COLUMN_WIDTHS = [160, 75, 100, 100, 100, 100, 95];
 const HEADER = [
-  "EVSA / Pair (global)",
+  "EVSA / Pair (subgraph)",
   "E-splits",
   "Expected Jm",
   "Counted Jm",
@@ -91,7 +91,7 @@ export default class KmaxReportExportManager {
       pages.push(page);
       addText(
         page,
-        "kmax-Ensuring Analysis (global per EVSA)",
+        "kmax-Ensuring Analysis (per split-join subgraph)",
         LEFT_MARGIN,
         PAGE_HEIGHT - 42,
         16,
