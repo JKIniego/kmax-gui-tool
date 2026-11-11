@@ -6,7 +6,7 @@ const LEFT_MARGIN = 56;
 const TABLE_WIDTH = PAGE_WIDTH - LEFT_MARGIN * 2;
 const COLUMN_WIDTHS = [160, 75, 100, 100, 100, 100, 95];
 const HEADER = [
-  "EVSA / Pair (subgraph)",
+  "EVSA / RDLT",
   "Eₛₚₗᵢₜ",
   "Expected Jₘ",
   "Counted Jₘ",
@@ -22,7 +22,7 @@ export default class KmaxReportExportManager {
     const evaluation = instance.evaluation || {};
     const splitJoins = evaluation.splitJoins || [];
     const rows = splitJoins.map((splitJoin) => [
-      `L${splitJoin.level}, ${splitJoin.pair || "Unidentified pair"}`,
+      `L${splitJoin.level}, ${splitJoin.scope || splitJoin.pair || "Entire RDLT"}`,
       this.#value(splitJoin.esplits),
       this.#value(splitJoin.expectedMergingJoins),
       this.#value(splitJoin.mergingJoins),
@@ -32,7 +32,7 @@ export default class KmaxReportExportManager {
     ]);
 
     if (rows.length === 0) {
-      rows.push(["No split-join pairs identified", "", "", "", "", "", ""]);
+      rows.push(["No RDLT kmax-ensuring results available", "", "", "", "", "", ""]);
     }
 
     const pdf = this.#createPdf(rows);
@@ -91,7 +91,7 @@ export default class KmaxReportExportManager {
       pages.push(page);
       addText(
         page,
-        "kᵐᵃˣ-ensuring Analysis (per split-join subgraph)",
+        "kᵐᵃˣ-ensuring Analysis (per entire RDLT)",
         LEFT_MARGIN,
         PAGE_HEIGHT - 42,
         16,

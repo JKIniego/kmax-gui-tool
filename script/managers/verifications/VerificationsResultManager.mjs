@@ -36,7 +36,8 @@ export class VerificationsResultManager {
    *              kmax?: number,
    *              splitJoins?: {
    *                  level: number,
-   *                  pair: string,
+   *                  scope?: string,
+   *                  pair?: string,
    *                  pass: boolean,
    *                  vertices?: VertexUID[],
    *                  esplits?: number,

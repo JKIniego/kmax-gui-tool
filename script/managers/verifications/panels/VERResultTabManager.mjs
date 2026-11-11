@@ -231,7 +231,7 @@ export default class VERResultTabManager {
 
       if (!splitJoins?.length) {
         splitJoinsTableBody.appendChild(buildElement("tr", {}, [
-          buildElement("td", {}, ["No split-join pairs identified"]),
+          buildElement("td", {}, ["No RDLT kᵐᵃˣ-ensuring results available"]),
         ]));
       }
 
@@ -278,7 +278,7 @@ export default class VERResultTabManager {
           buildElement("span", {}, [
             pairComponents.length
               ? pairComponents.join(" → ")
-              : splitJoin.pair || "Unidentified pair",
+              : splitJoin.scope || splitJoin.pair || "Entire RDLT",
           ]),
           buildElement("span", {}, [` - kᵐᵃˣ-ensuring: ${pairResult}`]),
         ]);
