@@ -1263,6 +1263,7 @@ export class Soundness {
                 arc: `${edge.from.id}, ${edge.to.id}`
             })));
             const detectedCycles = rdltCycles.findCycles(rdltCycles.graph);
+            console.log("Detected Cycles:", detectedCycles);
             const cycleVertices = new Set(
                 detectedCycles.flatMap(cycle => cycle.flat()).map(String)
             );
@@ -1274,6 +1275,7 @@ export class Soundness {
                         return `${String(from)}->${String(to)}`;
                     })
             );
+            console.log("Looping Arcs:", loopingArcKeys);
 
             const { siblingPaths } = buildSplitJoinPairs(rdlt);
             const splitIds = new Set();
