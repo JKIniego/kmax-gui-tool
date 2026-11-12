@@ -41,6 +41,7 @@ export class VerificationsResultManager {
    *                  pass: boolean,
    *                  vertices?: VertexUID[],
    *                  esplits?: number,
+   *                  esplitArcs?: [string, string][],
    *                  mergingJoins?: number,
    *                  expectedMergingJoins?: number,
    *                  separatingJoins?: number,

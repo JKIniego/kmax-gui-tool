@@ -251,7 +251,14 @@ export default class VERResultTabManager {
           Number.isFinite(expectedJs) &&
           splitJoin.separatingJoins <= expectedJs;
         const pairDetails = [
-          ["Eₛₚₗᵢₜ", formatCalculation(splitJoin.esplits)],
+          [
+            `Eₛₚₗᵢₜ (${formatCalculation(splitJoin.esplits)})`,
+            buildElement("div", {}, [
+              ...(splitJoin.esplitArcs || []).map(([from, to]) =>
+                buildArcTagElement(from, to),
+              ),
+            ]),
+          ],
           [
             "Merging joins (Jₘ)",
             `${formatCalculation(splitJoin.mergingJoins)} counted; expected ${formatCalculation(expectedJm)} (${jmFormula}) - ${mergingPass ? "Pass" : "Fail"}`,
@@ -275,11 +282,6 @@ export default class VERResultTabManager {
         const pairResult = splitJoin.pass ? "Satisfied" : "Not satisfied";
         const pairSummary = buildElement("div", { classname: "vertex-tag" }, [
           buildElement("span", {}, [`L${splitJoin.level} `]),
-          buildElement("span", {}, [
-            pairComponents.length
-              ? pairComponents.join(" → ")
-              : splitJoin.scope || splitJoin.pair || "Entire RDLT",
-          ]),
           buildElement("span", {}, [` - kᵐᵃˣ-ensuring: ${pairResult}`]),
         ]);
         if (splitJoin.reason) {

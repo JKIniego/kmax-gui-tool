@@ -1125,12 +1125,13 @@ export class Soundness {
      *   1. Deadlock Tolerance (Weak Soundness) – verified via WRSVA (loop-safe NCAs,
      *      safe CAs, weakened JOIN-safe L-values, and escape contraction paths).
      *   2. Impedance-Free L-values – all arc reusability limits satisfy L(x, y) >= kmax.
-     *   3. kmax-Ensuring – for each EVSA graph, all split and join vertices in the
-     *      entire RDLT are counted and checked against:
+     *   3. kmax-Ensuring – for each EVSA graph with detected split-join pairs,
+     *      all split and join vertices in the entire RDLT are counted and checked against:
      *      - Merging joins: Jm = ceil(|Esplit| / 2) - kmax + 1
      *      - Separating joins: Js <= kmax - 1
      *
-     * The criteria array includes one kmax-Ensuring result for each EVSA graph.
+     * The criteria array includes a kmax-Ensuring result only for EVSA graphs
+     * with detected split-join pairs.
      *
      * @param {Graph} graph - The original input RDLT R.
      * @param {Graph[]} evsa - Array containing [R1, R2, ...] vertex-simplified RDLTs.
@@ -1284,6 +1285,12 @@ export class Soundness {
                 }
             }
 
+            if (siblingPaths.size === 0) {
+                console.log(`L${level}: no split-join pairs detected; skipping kᵐᵃˣ-ensuring check.`);
+                level++;
+                continue;
+            }
+
             const joinVertices = rdlt.vertices.filter(vertex => {
                 const incomingArcs = rdltArcs.filter(edge =>
                     String(edge.to.id) === String(vertex.id) &&
@@ -1295,13 +1302,14 @@ export class Soundness {
                     incomingArcs.length > 1;
             });
             const joinVertexIds = new Set(joinVertices.map(vertex => String(vertex.id)));
-            const esplits = rdltArcs.filter(edge => {
+            const esplitArcs = rdltArcs.filter(edge => {
                 const arcKey = `${String(edge.from.id)}->${String(edge.to.id)}`;
                 return splitIds.has(String(edge.from.id)) &&
                     !loopingArcKeys.has(arcKey) &&
                     contractedVertexIds.has(String(edge.to.id)) &&
                     !joinVertexIds.has(String(edge.to.id));
-            }).length;
+            });
+            const esplits = esplitArcs.length;
 
             let mergingJoins = 0;
             let separatingJoins = 0;
@@ -1334,6 +1342,7 @@ export class Soundness {
                 mergingJoins,
                 separatingJoins,
                 esplits,
+                esplitArcs: esplitArcs.map(edge => [edge.from.id, edge.to.id]),
                 expectedMergingJoins,
                 maxSeparatingJoins,
                 pass,
