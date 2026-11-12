@@ -10,6 +10,7 @@ import { Activity } from '../models/Activity.js';
 import { CASExtractor } from './cas-extractor.js';
 import { GeneralizedImpedance } from './generalized-impedance.js';
 import { generateTotalContractionPath } from './total-contraction-path.mjs';
+import { buildSplitJoinPairs } from './kmax-split-join-pair.mjs';
 
 /**
 * Utility class for verifying soundness properties.
@@ -1273,12 +1274,15 @@ export class Soundness {
                     })
             );
 
-            const splitVertices = rdlt.vertices.filter(vertex =>
-                rdltArcs.filter(edge =>
-                    String(edge.from.id) === String(vertex.id)
-                ).length > 1
-            );
-            const splitIds = new Set(splitVertices.map(vertex => String(vertex.id)));
+            const { siblingPaths } = buildSplitJoinPairs(rdlt);
+            const splitIds = new Set();
+            const pairedJoinIds = new Set();
+            for (const paths of siblingPaths.values()) {
+                for (const path of paths) {
+                    splitIds.add(String(path[0].id));
+                    pairedJoinIds.add(String(path[path.length - 1].id));
+                }
+            }
 
             const joinVertices = rdlt.vertices.filter(vertex => {
                 const incomingArcs = rdltArcs.filter(edge =>
@@ -1286,7 +1290,8 @@ export class Soundness {
                     contractedVertexIds.has(String(edge.from.id)) &&
                     contractedVertexIds.has(String(edge.to.id))
                 );
-                return !cycleVertices.has(String(vertex.id)) &&
+                return pairedJoinIds.has(String(vertex.id)) &&
+                    !cycleVertices.has(String(vertex.id)) &&
                     incomingArcs.length > 1;
             });
             const joinVertexIds = new Set(joinVertices.map(vertex => String(vertex.id)));
