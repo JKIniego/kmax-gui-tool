@@ -89,17 +89,6 @@ export default class VERResultTabManager {
       });
     }
 
-    const exportKmaxReportButton = this.#rootElement.querySelector(
-      "button[data-subaction='export-kmax-report']",
-    );
-    exportKmaxReportButton.addEventListener("click", () => {
-      this.#parentManager.exportKmaxReport();
-    });
-    exportKmaxReportButton.classList.toggle(
-      "hidden",
-      !this.#parentManager.canExportKmaxReport,
-    );
-
     this.#view.conclusion.root =
       this.#rootElement.querySelector(".status-chip");
     this.#view.conclusion.title =
@@ -179,14 +168,6 @@ export default class VERResultTabManager {
         violatingRemarks,
       },
     } = instance;
-    const exportKmaxReportButton = this.#rootElement.querySelector(
-      "button[data-subaction='export-kmax-report']",
-    );
-    exportKmaxReportButton.classList.toggle(
-      "hidden",
-      !this.#parentManager.canExportKmaxReport,
-    );
-
     // Setup conclusion chip
     if (conclusion.pass) {
       this.#view.conclusion.root.classList.add("passed");
@@ -224,7 +205,7 @@ export default class VERResultTabManager {
       this.#view.splitJoins.table.querySelector("tbody");
     splitJoinsTableBody.innerHTML = "";
 
-    if (this.#parentManager.canExportKmaxReport) {
+    if (this.#parentManager.canShowKmaxEnsuringResults) {
       splitJoinsSection.classList.remove("hidden");
       const formatCalculation = (value) =>
         Number.isFinite(value) ? String(value) : "-";

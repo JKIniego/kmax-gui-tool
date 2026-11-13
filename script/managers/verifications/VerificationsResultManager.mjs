@@ -7,7 +7,6 @@ import VERResultTabManager from "./panels/VERResultTabManager.mjs";
 import { VERSubworkspaceManager } from "./VERSubworkspaceManager.mjs";
 import { PAESimulationManager } from "../activity/extraction/PAESimulationManager.mjs";
 import { verifySoundness } from "../../services/soundness/soundness-service.mjs";
-import KmaxReportExportManager from "./KmaxReportExportManager.mjs";
 
 export class VerificationsResultManager {
   /** @type {ModelContext} */
@@ -176,7 +175,7 @@ export class VerificationsResultManager {
       && this.result.instances[0]?.evaluation?.criteria?.[0]?.pass !== false;
   }
 
-  get canExportKmaxReport() {
+  get canShowKmaxEnsuringResults() {
     return this.#soundnessConfig?.notion === "kmax"
       && this.result.instances[0]?.evaluation?.criteria?.[0]?.pass === true;
   }
@@ -295,14 +294,6 @@ export class VerificationsResultManager {
     this.#panels.result.displayInstanceResult(instance);
   }
 
-  exportKmaxReport() {
-    const instance = this.result.instances[this.#currentInstanceIndex];
-    if (!this.canExportKmaxReport) {
-      throw new Error("Cannot export a kmax report for a result without kmax data.");
-    }
-
-    KmaxReportExportManager.export(instance, this.#modelSnapshot.getName());
-  }
   handleSimulateMAE(view) {
     this.context.managers.workspace.startActivitySimulation(new Activity({
       name: "Activity from Well-Handledness",
