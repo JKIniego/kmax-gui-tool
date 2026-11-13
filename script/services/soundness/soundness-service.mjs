@@ -168,6 +168,7 @@ export function verifySoundness(model, source, sink, soundnessNotion, kmaxInstan
     }
     
     let soundnessPass, soundnessTitle, soundnessDescription, soundnessCriteria;
+    let soundnessRuntimeMs = null;
     let soundnessKmax = null;
     let soundnessSplitJoins = [];
     let soundnessViolation = {arcs: [], vertices: []};
@@ -291,6 +292,7 @@ export function verifySoundness(model, source, sink, soundnessNotion, kmaxInstan
 
         case 'kmax':
             console.time("kmax Soundness Verification");
+            const kmaxStart = performance.now();
             const matrixInputSound = {
                 input_rdlt,
                 R1,
@@ -302,6 +304,7 @@ export function verifySoundness(model, source, sink, soundnessNotion, kmaxInstan
                 matrixInputSound,
                 kmaxInstance
             );
+            soundnessRuntimeMs = performance.now() - kmaxStart;
             console.timeEnd("kmax Soundness Verification");
 
             soundnessPass = kmaxResult.pass;
@@ -1005,6 +1008,7 @@ export function verifySoundness(model, source, sink, soundnessNotion, kmaxInstan
                         title: soundnessTitle,
                         description: soundnessDescription
                     },
+                    ...(soundnessRuntimeMs !== null && { runtimeMs: soundnessRuntimeMs }),
                     criteria: soundnessCriteria,
                     ...(soundnessKmax !== null && { kmax: soundnessKmax }),
                     splitJoins: soundnessSplitJoins,

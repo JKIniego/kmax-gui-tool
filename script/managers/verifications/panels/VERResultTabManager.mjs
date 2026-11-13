@@ -20,6 +20,10 @@ export default class VERResultTabManager {
    *       title: HTMLDivElement,
    *       description: HTMLDivElement,
    *   },
+   *   runtime: {
+   *       section: HTMLDivElement,
+   *       value: HTMLDivElement,
+   *   },
    *   criteria: {
    *      section: HTMLDivElement,
    *      table: HTMLTableElement,
@@ -44,6 +48,7 @@ export default class VERResultTabManager {
    */
   #view = {
     conclusion: { root: null, title: null, description: null },
+    runtime: { section: null, value: null },
     criteria: { section: null, table: null },
     kmaxEnsuring: { section: null, table: null },
     theoreticalNotes: { section: null, content: null },
@@ -97,6 +102,13 @@ export default class VERResultTabManager {
       ".status-description"
     );
 
+    this.#view.runtime.section = this.#rootElement.querySelector(
+      `[data-ver-section="runtime"]`
+    );
+    this.#view.runtime.value = this.#rootElement.querySelector(
+      `[data-ver-section="runtime"] .runtime-value`
+    );
+
     this.#view.criteria.section = this.#rootElement.querySelector(
       `[data-ver-section="criteria"]`
     );
@@ -139,6 +151,7 @@ export default class VERResultTabManager {
    *              title,
    *              description
    *          },
+   *          runtimeMs?: number,
    *          criteria: {
    *              pass, description
    *          }[],
@@ -161,6 +174,7 @@ export default class VERResultTabManager {
       name,
       evaluation: {
         conclusion,
+        runtimeMs,
         criteria,
         kmax,
         splitJoins: kmaxEnsuring,
@@ -177,6 +191,17 @@ export default class VERResultTabManager {
 
     this.#view.conclusion.title.innerHTML = conclusion.title;
     this.#view.conclusion.description.innerHTML = conclusion.description;
+
+    if (Number.isFinite(runtimeMs)) {
+      this.#view.runtime.section.classList.remove("hidden");
+      const runtimeText = runtimeMs >= 1000
+        ? `${(runtimeMs / 1000).toFixed(2)} s`
+        : `${runtimeMs.toFixed(1)} ms`;
+      this.#view.runtime.value.textContent = runtimeText;
+    } else {
+      this.#view.runtime.section.classList.add("hidden");
+      this.#view.runtime.value.textContent = "--";
+    }
 
     // Setup criteria
     const criteriaSection = this.#view.criteria.section;
