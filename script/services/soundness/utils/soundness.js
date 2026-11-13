@@ -10,7 +10,7 @@ import { Activity } from '../models/Activity.js';
 import { CASExtractor } from './cas-extractor.js';
 import { GeneralizedImpedance } from './generalized-impedance.js';
 import { generateTotalContractionPath } from './total-contraction-path.mjs';
-import { buildSplitJoinPairs } from './kmax-split-join-pair.mjs';
+import { buildSplitJoinPairs, getKmaxJoinTypes } from './kmax-helper.mjs';
 
 /**
 * Utility class for verifying soundness properties.
@@ -1129,6 +1129,8 @@ export class Soundness {
      *      all split and join vertices in the entire RDLT are counted and checked against:
      *      - Merging joins: Jm = ceil(|Esplit| / 2) - kmax + 1
      *      - Separating joins: Js <= kmax - 1
+     *      Join types are validated before the other checks; any join with more than
+     *      two unique incoming constraints makes the kmax-soundness check inconclusive.
      *
      * The criteria array includes a kmax-Ensuring result only for EVSA graphs
      * with detected split-join pairs.
@@ -1151,6 +1153,33 @@ export class Soundness {
         const violations = [];
         const splitJoins = [];
         let level = 1;
+        const joinTypesByRdlt = new Map();
+        const joinTypeViolations = [];
+        evsa.forEach((rdlt, index) => {
+            const { joinTypes, invalidJoinIds } = getKmaxJoinTypes(rdlt);
+            joinTypesByRdlt.set(rdlt, joinTypes);
+            for (const vertexId of invalidJoinIds) {
+                joinTypeViolations.push({
+                    id: vertexId,
+                    type: "vertex",
+                    message: `Join type validation failed (L${index + 1}): vertex ${vertexId} has more than two unique incoming constraints.`
+                });
+            }
+        });
+
+        if (joinTypeViolations.length > 0) {
+            return {
+                pass: false,
+                message: "kᵐᵃˣ-soundness check was inconclusive",
+                description: "The kᵐᵃˣ-soundness check cannot be performed because one or more joins have more than two unique incoming constraints.",
+                criteria: [{
+                    pass: false,
+                    description: "Join type validation: Cannot check kᵐᵃˣ-soundness"
+                }],
+                violations: joinTypeViolations,
+                splitJoins
+            };
+        }
 
         // The WRSVA verifies the weak-soundness property of an RDLT by checking
         // for deadlock tolerance that ensures proper termination regardless of
@@ -1217,6 +1246,7 @@ export class Soundness {
         console.log(`kmax = ${kmax}`);
 
         for (const rdlt of evsa) {
+            const joinTypes = joinTypesByRdlt.get(rdlt);
             let isImpedanceFreeLValues = true;
             const edgeList = rdlt.edges;
             
@@ -1300,6 +1330,7 @@ export class Soundness {
                     contractedVertexIds.has(String(edge.to.id))
                 );
                 return pairedJoinIds.has(String(vertex.id)) &&
+                    joinTypes.has(String(vertex.id)) &&
                     !cycleVertices.has(String(vertex.id)) &&
                     incomingArcs.length > 1;
             });
@@ -1316,20 +1347,9 @@ export class Soundness {
             let mergingJoins = 0;
             let separatingJoins = 0;
             for (const joinVertex of joinVertices) {
-                const incomingConstraints = new Set(
-                    rdltArcs
-                        .filter(edge =>
-                            String(edge.to.id) === String(joinVertex.id) &&
-                            contractedVertexIds.has(String(edge.from.id)) &&
-                            contractedVertexIds.has(String(edge.to.id))
-                        )
-                        .map(edge => edge.constraint ?? "")
-                );
-                const joinType = incomingConstraints.size > 1
-                    ? (incomingConstraints.has("") ? "MIX" : "AND")
-                    : "OR";
+                const joinType = joinTypes.get(String(joinVertex.id));
                 if (joinType === "AND") mergingJoins++;
-                else separatingJoins++;
+                else if (joinType === "OR" || joinType === "MIX") separatingJoins++;
             }
 
             const expectedMergingJoins = Math.ceil(esplits / 2) - kmax + 1;
