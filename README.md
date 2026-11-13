@@ -19,11 +19,11 @@ npx serve
 ```
 http://localhost:3000
 ```
-4. The `index.html` file will be loaded automatically.
+4. The `main.html` file will be loaded automatically.
 
 ## Important
 
-Do not open `index.html` directly using:
+Do not open `main.html` directly using:
 
 ```
 file:///...
