@@ -1278,14 +1278,24 @@ export class Soundness {
                     : `Impedance-free L-values (L${level}): Not satisfied`
             });
 
-
+            // Before Jm, Js, and |Esplit| can be counted, we need to know:
+            //   (a) which vertices/arcs are traversable (P_Total), and
+            //   (b) which vertices lie on cycles and which arcs are looping
+            //       arcs (splits with a looping arc are excluded from Esplit).
             const rdltArcs = rdlt.edges;
             const { source: rdltSource } = utils.getSourceAndSinkVertices(rdlt);
             let reason;
+
+            // Vertices reachable through the total contraction path (P_Total).
+            // Definition 18 only counts traversable arcs, so an arc is
+            // traversable here when both of its endpoints are in this set.
             const contractedVertexIds = new Set();
             if (!rdltSource) {
                 reason = "Unable to identify the RDLT source vertex.";
             } else {
+                // Compute the total contraction path from the source and
+                // collect its vertex IDs (as strings, for consistent
+                // comparison with the other ID sets used below).
                 const { P_Total } = generateTotalContractionPath({
                     vertices: rdlt.vertices,
                     arcs: rdltArcs,
@@ -1296,15 +1306,21 @@ export class Soundness {
                 }
             }
 
+            // Detect all cycles in this EVSA graph. Each arc is mapped to the
+            // { "r-id", arc: "from, to" } format that the Cycle class expects,
+            // falling back to the array index when an edge has no id.
             const rdltCycles = new Cycle(rdltArcs.map((edge, index) => ({
                 "r-id": edge.id ?? index,
                 arc: `${edge.from.id}, ${edge.to.id}`
             })));
             const detectedCycles = rdltCycles.findCycles(rdltCycles.graph);
             console.log("Detected Cycles:", detectedCycles);
-            const cycleVertices = new Set(
-                detectedCycles.flatMap(cycle => cycle.flat()).map(String)
-            );
+            
+            // Looping arcs: for each cycle, the last arc in the cycle is the
+            // one that closes the loop back to an earlier vertex, so it is
+            // treated as the looping arc. These keys ("from->to") are used to
+            // exclude such arcs from Esplit, per Definition 18 ("OR- and
+            // AND-splits that do not have a looping arc").
             const loopingArcKeys = new Set(
                 detectedCycles
                     .filter(cycle => cycle.length > 0)
