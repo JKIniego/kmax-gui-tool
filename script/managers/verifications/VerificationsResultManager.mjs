@@ -33,7 +33,7 @@ export class VerificationsResultManager {
    *                  description: string
    *              }[],
    *              kmax?: number,
-   *              splitJoins?: {
+   *              kmaxEnsuringResults?: {
    *                  level: number,
    *                  scope?: string,
    *                  pair?: string,

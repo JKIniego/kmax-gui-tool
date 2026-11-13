@@ -1129,12 +1129,14 @@ export class Soundness {
      *      all split and join vertices in the entire RDLT are counted and checked against:
      *      - Merging joins: Jm = ceil(|Esplit| / 2) - kmax + 1
      *      - Separating joins: Js <= kmax - 1
-     *      Join types are validated before the other checks; any join with more than
-     *      two unique incoming constraints makes the kmax-soundness check inconclusive.
      *
      * The criteria array includes a kmax-Ensuring result only for EVSA graphs
      * with detected split-join pairs.
+     * 
+     * Join types are validated before the other checks; any join with more than
+     * two unique incoming constraints makes the kmax-soundness check inconclusive.
      *
+     * 
      * @param {Graph} graph - The original input RDLT R.
      * @param {Graph[]} evsa - Array containing [R1, R2, ...] vertex-simplified RDLTs.
      * @param {Object} matrixInput - the RDLT & EVSA representation objects in readable format for matrix operations of Asoy
@@ -1144,14 +1146,14 @@ export class Soundness {
      *   description: string,
      *   violations: Array,
      *   criteria: Array,
-     *   splitJoins: Array,
+     *   kmaxEnsuringResults: Array,
      *   visualizationData: Object
      * }}
      */
     static checkkmaxSound(graph, evsa, matrixInput, kmaxInstance = null) {
         const criteria = [];
         const violations = [];
-        const splitJoins = [];
+        const kmaxEnsuringResults = [];
         let level = 1;
         const joinTypesByRdlt = new Map();
         const joinTypeViolations = [];
@@ -1177,7 +1179,7 @@ export class Soundness {
                     description: "Join type validation: Cannot check kᵐᵃˣ-soundness"
                 }],
                 violations: joinTypeViolations,
-                splitJoins
+                kmaxEnsuringResults
             };
         }
 
@@ -1203,7 +1205,7 @@ export class Soundness {
                 description: "The model does not satisfy all kᵐᵃˣ-soundness criteria.",
                 criteria,
                 violations,
-                splitJoins
+                kmaxEnsuringResults
             };
         }
 
@@ -1250,8 +1252,13 @@ export class Soundness {
             let isImpedanceFreeLValues = true;
             const edgeList = rdlt.edges;
             
-            // All arcs in the input RDLT must have an L-value larger, if not equal,
-            // to the number of traversable outgoing arcs from the source.
+            // Implementation: the number of activities that can be initiated
+            // is kmax (the number of traversable outgoing arcs from the source
+            // s, computed above). Every arc in the RDLT must therefore satisfy
+            //     L(x, y) >= kmax
+            // Any arc with kmax > L(x, y) would impede (block) one of the
+            // concurrently initiated activities from traversing it, so it is
+            // recorded as a violation.
             for (const edge of edgeList) {
                 if (kmax > edge.maxTraversals) {
                     isImpedanceFreeLValues = false;
@@ -1263,6 +1270,7 @@ export class Soundness {
                 }
             }
 
+            // Criterion result: satisfied only if no arc violated L(x, y) >= kmax.
             criteria.push({
                 pass: isImpedanceFreeLValues,
                 description: isImpedanceFreeLValues
@@ -1307,6 +1315,21 @@ export class Soundness {
             );
             console.log("Looping Arcs:", loopingArcKeys);
 
+
+            // An RDLT R is kmax-ensuring if, given:
+            //   - Jm: number of joins merging activities
+            //   - Js: number of joins separating activities
+            //   - Esplit: set of traversable arcs (x, y) ∈ E that form splits
+            //             separating activities, i.e., OR- and AND-splits that
+            //             do NOT have a looping arc
+            // the following constraints hold:
+            //   (1) Jm = ceil(|Esplit| / 2) - kmax + 1
+            //   (2) Js <= kmax - 1
+
+            // Split vertices (x) and their paired join vertices come from the
+            // sibling paths of the split-join pairs. Both are used below to
+            // identify the splits that make up Esplit and the joins to count
+            // for Jm and Js.
             const { siblingPaths } = buildSplitJoinPairs(rdlt);
             const splitIds = new Set();
             const pairedJoinIds = new Set();
@@ -1317,6 +1340,8 @@ export class Soundness {
                 }
             }
 
+            // No split-join pairs means there are no splits/joins to count, so
+            // Definition 18 does not apply to this EVSA graph. Skip it.
             if (siblingPaths.size === 0) {
                 console.log(`L${level}: no split-join pairs detected; skipping kᵐᵃˣ-ensuring check.`);
                 level++;
@@ -1331,7 +1356,6 @@ export class Soundness {
                 );
                 return pairedJoinIds.has(String(vertex.id)) &&
                     joinTypes.has(String(vertex.id)) &&
-                    !cycleVertices.has(String(vertex.id)) &&
                     incomingArcs.length > 1;
             });
             const joinVertexIds = new Set(joinVertices.map(vertex => String(vertex.id)));
@@ -1344,6 +1368,9 @@ export class Soundness {
             });
             const esplits = esplitArcs.length;
 
+            // Classify each counted join by type:
+            //   Jm (merging activities) -> AND joins
+            //   Js (separating activities) -> OR / MIX joins
             let mergingJoins = 0;
             let separatingJoins = 0;
             for (const joinVertex of joinVertices) {
@@ -1352,8 +1379,19 @@ export class Soundness {
                 else if (joinType === "OR" || joinType === "MIX") separatingJoins++;
             }
 
+            // Constraint (1): Jm = ceil(|Esplit| / 2) - kmax + 1
+            // i.e., the number of joins merging activities must equal the
+            // difference between the number of traversable arcs that separate
+            // activities and the number of initiated activities (kmax), plus one.
             const expectedMergingJoins = Math.ceil(esplits / 2) - kmax + 1;
+
+            // Constraint (2): Js <= kmax - 1
+            // i.e., the number of joins that separate activities must equal the
+            // number of initiated activities minus one.
             const maxSeparatingJoins = kmax - 1;
+
+            // The RDLT is kmax-ensuring (for this EVSA graph) only if both
+            // constraints of Definition 18 are satisfied.
             const pass = mergingJoins === expectedMergingJoins &&
                 separatingJoins <= maxSeparatingJoins &&
                 !reason;
@@ -1370,7 +1408,7 @@ export class Soundness {
                 pass,
                 reason
             };
-            splitJoins.push(result);
+            kmaxEnsuringResults.push(result);
 
             console.log(
                 `L${level} entire RDLT: ${pass ? "PASS" : "FAIL"}; ` +
@@ -1391,7 +1429,7 @@ export class Soundness {
         }
 
         const pass = criteria.every(criterion => criterion.pass) &&
-            splitJoins.every(splitJoin => splitJoin.pass);
+            kmaxEnsuringResults.every(result => result.pass);
 
         return {
             ...weakResult,
@@ -1405,7 +1443,7 @@ export class Soundness {
                 : "The model does not satisfy all kᵐᵃˣ-soundness criteria.",
             criteria,
             violations,
-            splitJoins
+            kmaxEnsuringResults
         };
     }
 }

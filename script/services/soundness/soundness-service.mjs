@@ -170,7 +170,7 @@ export function verifySoundness(model, source, sink, soundnessNotion, kmaxInstan
     let soundnessPass, soundnessTitle, soundnessDescription, soundnessCriteria;
     let soundnessRuntimeMs = null;
     let soundnessKmax = null;
-    let soundnessSplitJoins = [];
+    let soundnessKmaxEnsuringResults = [];
     let soundnessViolation = {arcs: [], vertices: []};
     let soundnessViolationRemarks = {arcs: {}, vertices: {}};
     let lazyResult = null;   // hoisted so the post-switch lazy instance builder can read it
@@ -312,7 +312,7 @@ export function verifySoundness(model, source, sink, soundnessNotion, kmaxInstan
             soundnessDescription = kmaxResult.description;
             soundnessCriteria = kmaxResult.criteria;
             soundnessKmax = kmaxResult.kmax;
-            soundnessSplitJoins = kmaxResult.splitJoins || [];
+            soundnessKmaxEnsuringResults = kmaxResult.kmaxEnsuringResults || [];
 
             if (kmaxResult.violations) {
                 const transformedArcMap = utils.transformArcMap(arcMap);
@@ -1011,7 +1011,7 @@ export function verifySoundness(model, source, sink, soundnessNotion, kmaxInstan
                     ...(soundnessRuntimeMs !== null && { runtimeMs: soundnessRuntimeMs }),
                     criteria: soundnessCriteria,
                     ...(soundnessKmax !== null && { kmax: soundnessKmax }),
-                    splitJoins: soundnessSplitJoins,
+                    kmaxEnsuringResults: soundnessKmaxEnsuringResults,
                     violating: {
                         arcs: soundnessViolation.arcs,
                         vertices: soundnessViolation.vertices

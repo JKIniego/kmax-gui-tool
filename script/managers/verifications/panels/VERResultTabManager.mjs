@@ -177,7 +177,7 @@ export default class VERResultTabManager {
         runtimeMs,
         criteria,
         kmax,
-        splitJoins: kmaxEnsuring,
+        kmaxEnsuringResults: kmaxEnsuring,
         violating,
         violatingRemarks,
       },
