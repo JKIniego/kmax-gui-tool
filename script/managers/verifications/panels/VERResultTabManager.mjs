@@ -24,7 +24,7 @@ export default class VERResultTabManager {
    *      section: HTMLDivElement,
    *      table: HTMLTableElement,
    *   },
-   *   splitJoins: {
+   *   kmaxEnsuring: {
    *      section: HTMLDivElement,
    *      table: HTMLTableElement,
    *   },
@@ -45,7 +45,7 @@ export default class VERResultTabManager {
   #view = {
     conclusion: { root: null, title: null, description: null },
     criteria: { section: null, table: null },
-    splitJoins: { section: null, table: null },
+    kmaxEnsuring: { section: null, table: null },
     theoreticalNotes: { section: null, content: null },
     violatingArcs: { section: null, table: null },
     violatingVertices: { section: null, table: null },
@@ -103,11 +103,11 @@ export default class VERResultTabManager {
     this.#view.criteria.table = this.#rootElement.querySelector(
       `[data-ver-section="criteria"] table`
     );
-    this.#view.splitJoins.section = this.#rootElement.querySelector(
-      `[data-ver-section="split-joins"]`
+    this.#view.kmaxEnsuring.section = this.#rootElement.querySelector(
+      `[data-ver-section="kmax-ensuring"]`
     );
-    this.#view.splitJoins.table = this.#rootElement.querySelector(
-      `[data-ver-section="split-joins"] table`
+    this.#view.kmaxEnsuring.table = this.#rootElement.querySelector(
+      `[data-ver-section="kmax-ensuring"] table`
     );
     this.#view.theoreticalNotes.section = this.#rootElement.querySelector(
       `[data-ver-section="theoretical-notes"]`
@@ -163,7 +163,7 @@ export default class VERResultTabManager {
         conclusion,
         criteria,
         kmax,
-        splitJoins,
+        splitJoins: kmaxEnsuring,
         violating,
         violatingRemarks,
       },
@@ -200,23 +200,23 @@ export default class VERResultTabManager {
       criteriaSection.classList.add("hidden");
     }
 
-    const splitJoinsSection = this.#view.splitJoins.section;
-    const splitJoinsTableBody =
-      this.#view.splitJoins.table.querySelector("tbody");
-    splitJoinsTableBody.innerHTML = "";
+    const kmaxEnsuringSection = this.#view.kmaxEnsuring.section;
+    const kmaxEnsuringTableBody =
+      this.#view.kmaxEnsuring.table.querySelector("tbody");
+    kmaxEnsuringTableBody.innerHTML = "";
 
     if (this.#parentManager.canShowKmaxEnsuringResults) {
-      splitJoinsSection.classList.remove("hidden");
+      kmaxEnsuringSection.classList.remove("hidden");
       const formatCalculation = (value) =>
         Number.isFinite(value) ? String(value) : "-";
 
-      if (!splitJoins?.length) {
-        splitJoinsTableBody.appendChild(buildElement("tr", {}, [
+      if (!kmaxEnsuring?.length) {
+        kmaxEnsuringTableBody.appendChild(buildElement("tr", {}, [
           buildElement("td", {}, ["No RDLT kᵐᵃˣ-ensuring results available"]),
         ]));
       }
 
-      for (const splitJoin of splitJoins || []) {
+      for (const splitJoin of kmaxEnsuring || []) {
         const expectedJm = splitJoin.expectedMergingJoins;
         const expectedJs = splitJoin.maxSeparatingJoins;
         const jmFormula = Number.isFinite(splitJoin.esplits) && Number.isFinite(kmax)
@@ -269,12 +269,12 @@ export default class VERResultTabManager {
           pairSummary.append(buildElement("div", {}, [splitJoin.reason]));
         }
 
-        splitJoinsTableBody.appendChild(buildElement("tr", {}, [
+        kmaxEnsuringTableBody.appendChild(buildElement("tr", {}, [
           buildElement("td", { colspan: "2" }, [pairSummary, detailsTable]),
         ]));
       }
     } else {
-      splitJoinsSection.classList.add("hidden");
+      kmaxEnsuringSection.classList.add("hidden");
     }
 
     // Setup theoretical notes
