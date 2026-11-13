@@ -209,7 +209,10 @@ export default class VERResultTabManager {
       kmaxEnsuringSection.classList.remove("hidden");
       const formatCalculation = (value) =>
         Number.isFinite(value) ? String(value) : "-";
-
+      const buildResultChip = (passed) =>
+        buildElement("span", { classname: "result-chip " + (passed ? "pass" : "fail") }, [
+          passed ? "Pass" : "Fail",
+        ]);
       if (!kmaxEnsuring?.length) {
         kmaxEnsuringTableBody.appendChild(buildElement("tr", {}, [
           buildElement("td", {}, ["No RDLT kᵐᵃˣ-ensuring results available"]),
@@ -242,24 +245,27 @@ export default class VERResultTabManager {
           ],
           [
             "Merging joins (Jₘ)",
-            `${formatCalculation(splitJoin.mergingJoins)} counted; expected ${formatCalculation(expectedJm)} (${jmFormula}) - ${mergingPass ? "Pass" : "Fail"}`,
+            [
+              `${formatCalculation(splitJoin.mergingJoins)} counted; expected ${formatCalculation(expectedJm)} (${jmFormula}) - `,
+              buildResultChip(mergingPass),
+            ],
           ],
           [
             "Separating joins (Jₛ)",
-            `${formatCalculation(splitJoin.separatingJoins)} counted; maximum ${formatCalculation(expectedJs)} (${jsFormula}) - ${separatingPass ? "Pass" : "Fail"}`,
+            [
+              `${formatCalculation(splitJoin.separatingJoins)} counted; maximum ${formatCalculation(expectedJs)} (${jsFormula}) - `,
+              buildResultChip(separatingPass),
+            ],
           ],
         ];
         const detailsTable = buildElement("table", {}, [
           buildElement("tbody", {}, pairDetails.map(([label, value]) =>
             buildElement("tr", {}, [
               buildElement("th", {}, [label]),
-              buildElement("td", {}, [value]),
+              buildElement("td", {}, Array.isArray(value) ? value : [value]),
             ]),
           )),
         ]);
-        const pairComponents = (splitJoin.vertices || [])
-          .map((vertexUID) => this.#parentManager.getVertexIdentifier(vertexUID))
-          .filter(Boolean);
         const pairResult = splitJoin.pass ? "Satisfied" : "Not satisfied";
         const pairSummary = buildElement("div", { classname: "vertex-tag" }, [
           buildElement("span", {}, [`L${splitJoin.level} `]),
