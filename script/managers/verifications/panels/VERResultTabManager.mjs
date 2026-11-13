@@ -200,11 +200,82 @@ export default class VERResultTabManager {
       criteriaSection.classList.add("hidden");
     }
 
+    // Setup theoretical notes
+    const theoreticalNotesSection = this.#view.theoreticalNotes.section;
+    const theoreticalNotesContent = this.#view.theoreticalNotes.content;
+    theoreticalNotesContent.innerHTML = "";
+    
+    // Check if this instance has theoretical notes (added by soundness-service for lazy soundness)
+    const theoreticalNote = instance.evaluation?.theoreticalNote;
+    if (theoreticalNote) {
+      theoreticalNotesSection.classList.remove("hidden");
+      
+      const noteElement = buildElement("div", { classname: "theoretical-note" }, [
+        buildElement("div", { classname: "note-theorem" }, [theoreticalNote.theorem]),
+        buildElement("div", { classname: "note-statement" }, [theoreticalNote.statement]),
+        buildElement("div", { classname: "note-explanation" }, [theoreticalNote.explanation])
+      ]);
+      
+      theoreticalNotesContent.appendChild(noteElement);
+    } else {
+      theoreticalNotesSection.classList.add("hidden");
+    }
+
+    // Setup violating arcs
+    const violatingArcsSection = this.#view.violatingArcs.section;
+    const violatingArcsTableBody =
+      this.#view.violatingArcs.table.querySelector("tbody");
+    violatingArcsTableBody.innerHTML = "";
+
+    // Dynamic header: "Shared Arc" instance shows "Shared Arc", all others show "Violating Arcs"
+    const arcsHeader = violatingArcsSection.querySelector("header");
+    if (arcsHeader) {
+      arcsHeader.textContent = (name === "Shared Arc") ? "Shared Arc" : "Violating Arcs";
+    }
+
+    if (violating?.arcs && violating.arcs.length > 0) {
+      violatingArcsSection.classList.remove("hidden");
+      for (const arcUID of violating.arcs) {
+        const identifierPair = this.#parentManager.getArcIdentifierPair(arcUID);
+        const row = buildElement("tr", {}, [
+          buildElement("td", {}, [buildArcTagElement(...identifierPair)]),
+          buildElement("td", {}, [violatingRemarks?.arcs[arcUID] || ""]),
+        ]);
+
+        violatingArcsTableBody.appendChild(row);
+      }
+    } else {
+      violatingArcsSection.classList.add("hidden");
+    }
+
+    // Setup violating vertices
+    const violatingVerticesSection = this.#view.violatingVertices.section;
+    const violatingVerticesTableBody =
+      this.#view.violatingVertices.table.querySelector("tbody");
+    violatingVerticesTableBody.innerHTML = "";
+
+    if (violating?.vertices && violating.vertices.length > 0) {
+      violatingVerticesSection.classList.remove("hidden");
+      for (const vertexUID of violating.vertices) {
+        const identifier = this.#parentManager.getVertexIdentifier(vertexUID);
+        const row = buildElement("tr", {}, [
+          buildElement("td", {}, [buildVertexTagElement(identifier)]),
+          buildElement("td", {}, [violatingRemarks?.vertices[vertexUID] || ""]),
+        ]);
+
+        violatingVerticesTableBody.appendChild(row);
+      }
+    } else {
+      violatingVerticesSection.classList.add("hidden");
+    }
+
+    // Setup kmax-ensuring report
     const kmaxEnsuringSection = this.#view.kmaxEnsuring.section;
     const kmaxEnsuringTableBody =
       this.#view.kmaxEnsuring.table.querySelector("tbody");
     kmaxEnsuringTableBody.innerHTML = "";
 
+    // Check if this instance has kmax-ensuring notes (added by soundness-service for kmax-soundness)
     if (this.#parentManager.canShowKmaxEnsuringResults) {
       kmaxEnsuringSection.classList.remove("hidden");
       const formatCalculation = (value) =>
@@ -281,75 +352,6 @@ export default class VERResultTabManager {
       }
     } else {
       kmaxEnsuringSection.classList.add("hidden");
-    }
-
-    // Setup theoretical notes
-    const theoreticalNotesSection = this.#view.theoreticalNotes.section;
-    const theoreticalNotesContent = this.#view.theoreticalNotes.content;
-    theoreticalNotesContent.innerHTML = "";
-    
-    // Check if this instance has theoretical notes (added by soundness-service for lazy soundness)
-    const theoreticalNote = instance.evaluation?.theoreticalNote;
-    if (theoreticalNote) {
-      theoreticalNotesSection.classList.remove("hidden");
-      
-      const noteElement = buildElement("div", { classname: "theoretical-note" }, [
-        buildElement("div", { classname: "note-theorem" }, [theoreticalNote.theorem]),
-        buildElement("div", { classname: "note-statement" }, [theoreticalNote.statement]),
-        buildElement("div", { classname: "note-explanation" }, [theoreticalNote.explanation])
-      ]);
-      
-      theoreticalNotesContent.appendChild(noteElement);
-    } else {
-      theoreticalNotesSection.classList.add("hidden");
-    }
-
-    // Setup violating arcs
-    const violatingArcsSection = this.#view.violatingArcs.section;
-    const violatingArcsTableBody =
-      this.#view.violatingArcs.table.querySelector("tbody");
-    violatingArcsTableBody.innerHTML = "";
-
-    // Dynamic header: "Shared Arc" instance shows "Shared Arc", all others show "Violating Arcs"
-    const arcsHeader = violatingArcsSection.querySelector("header");
-    if (arcsHeader) {
-      arcsHeader.textContent = (name === "Shared Arc") ? "Shared Arc" : "Violating Arcs";
-    }
-
-    if (violating?.arcs && violating.arcs.length > 0) {
-      violatingArcsSection.classList.remove("hidden");
-      for (const arcUID of violating.arcs) {
-        const identifierPair = this.#parentManager.getArcIdentifierPair(arcUID);
-        const row = buildElement("tr", {}, [
-          buildElement("td", {}, [buildArcTagElement(...identifierPair)]),
-          buildElement("td", {}, [violatingRemarks?.arcs[arcUID] || ""]),
-        ]);
-
-        violatingArcsTableBody.appendChild(row);
-      }
-    } else {
-      violatingArcsSection.classList.add("hidden");
-    }
-
-    // Setup violating vertices
-    const violatingVerticesSection = this.#view.violatingVertices.section;
-    const violatingVerticesTableBody =
-      this.#view.violatingVertices.table.querySelector("tbody");
-    violatingVerticesTableBody.innerHTML = "";
-
-    if (violating?.vertices && violating.vertices.length > 0) {
-      violatingVerticesSection.classList.remove("hidden");
-      for (const vertexUID of violating.vertices) {
-        const identifier = this.#parentManager.getVertexIdentifier(vertexUID);
-        const row = buildElement("tr", {}, [
-          buildElement("td", {}, [buildVertexTagElement(identifier)]),
-          buildElement("td", {}, [violatingRemarks?.vertices[vertexUID] || ""]),
-        ]);
-
-        violatingVerticesTableBody.appendChild(row);
-      }
-    } else {
-      violatingVerticesSection.classList.add("hidden");
     }
   }
 }
