@@ -564,7 +564,7 @@ export class Soundness {
             }
         } else {
             console.log("RDLT contains other JOINs. Evaluating both R1 and R2");
-            const matrixInstance = new Matrix([...matrixInput.R1, ...matrixInput.R2], cycleListR1);
+            const matrixInstance = new Matrix([matrixInput.R1, matrixInput.R2], cycleListR1);
             const { pass } = matrixInstance.evaluateSafeLoopSafe();
             
             if (!pass){
@@ -615,7 +615,7 @@ export class Soundness {
                 deadlockResolving.violations.forEach(violation => {
                     violations.push({
                         id: violation.id,
-                        message: `Parent of deadlock point has no contraction path to the sink (L${level})`, // Append level to the message
+                        message: `${violation.message} (L${level})`, // Append level to the message
                         type: "vertex"
                     });
                 });
