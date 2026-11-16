@@ -1249,17 +1249,53 @@ export class Soundness {
 
         for (const rdlt of evsa) {
             const joinTypes = joinTypesByRdlt.get(rdlt);
-            let isImpedanceFreeLValues = true;
-            const edgeList = rdlt.edges;
-            
+            let reason;
+
+            // Build the traversable RDLT from this EVSA's total contraction
+            // path. Both checks below must use the same path-restricted graph.
+            const rdltArcs = rdlt.edges;
+            const { source: rdltSource } = utils.getSourceAndSinkVertices(rdlt);
+            const contractedVertexIds = new Set();
+            if (!rdltSource) {
+                reason = "Unable to identify the RDLT source vertex.";
+            } else {
+                const { P_Total } = generateTotalContractionPath({
+                    vertices: rdlt.vertices,
+                    arcs: rdltArcs,
+                    source: rdltSource
+                });
+                for (const vertexId of P_Total) {
+                    contractedVertexIds.add(String(vertexId));
+                }
+            }
+
+            const traversableRdlt = {
+                vertices: rdlt.vertices.filter(vertex =>
+                    contractedVertexIds.has(String(vertex.id))
+                ),
+                edges: rdltArcs.filter(edge =>
+                    contractedVertexIds.has(String(edge.from.id)) &&
+                    contractedVertexIds.has(String(edge.to.id))
+                )
+            };
+
+            let isImpedanceFreeLValues = !reason;
+            if (reason) {
+                violations.push({
+                    id: null,
+                    type: "graph",
+                    message: `Impedance-free L-values could not be checked (L${level}): ${reason}`
+                });
+            }
+
             // Implementation: the number of activities that can be initiated
             // is kmax (the number of traversable outgoing arcs from the source
-            // s, computed above). Every arc in the RDLT must therefore satisfy
+            // s, computed above). Every traversable arc must therefore satisfy
             //     L(x, y) >= kmax
             // Any arc with kmax > L(x, y) would impede (block) one of the
             // concurrently initiated activities from traversing it, so it is
             // recorded as a violation.
-            for (const edge of edgeList) {
+            for (const edge of traversableRdlt.edges) {
                 if (kmax > edge.maxTraversals) {
                     isImpedanceFreeLValues = false;
                     violations.push({
@@ -1279,37 +1315,15 @@ export class Soundness {
             });
 
             // Before Jm, Js, and |Esplit| can be counted, we need to know:
-            //   (a) which vertices/arcs are traversable (P_Total), and
+            //   (a) which vertices/arcs are traversable (collected above), and
             //   (b) which vertices lie on cycles and which arcs are looping
             //       arcs (splits with a looping arc are excluded from Esplit).
-            const rdltArcs = rdlt.edges;
-            const { source: rdltSource } = utils.getSourceAndSinkVertices(rdlt);
-            let reason;
-
-            // Vertices reachable through the total contraction path (P_Total).
-            // Definition 18 only counts traversable arcs, so an arc is
-            // traversable here when both of its endpoints are in this set.
-            const contractedVertexIds = new Set();
-            if (!rdltSource) {
-                reason = "Unable to identify the RDLT source vertex.";
-            } else {
-                // Compute the total contraction path from the source and
-                // collect its vertex IDs (as strings, for consistent
-                // comparison with the other ID sets used below).
-                const { P_Total } = generateTotalContractionPath({
-                    vertices: rdlt.vertices,
-                    arcs: rdltArcs,
-                    source: rdltSource
-                });
-                for (const vertexId of P_Total) {
-                    contractedVertexIds.add(String(vertexId));
-                }
-            }
+            const traversableRdltArcs = traversableRdlt.edges;
 
             // Detect all cycles in this EVSA graph. Each arc is mapped to the
             // { "r-id", arc: "from, to" } format that the Cycle class expects,
             // falling back to the array index when an edge has no id.
-            const rdltCycles = new Cycle(rdltArcs.map((edge, index) => ({
+            const rdltCycles = new Cycle(traversableRdltArcs.map((edge, index) => ({
                 "r-id": edge.id ?? index,
                 arc: `${edge.from.id}, ${edge.to.id}`
             })));
@@ -1346,7 +1360,7 @@ export class Soundness {
             // sibling paths of the split-join pairs. Both are used below to
             // identify the splits that make up Esplit and the joins to count
             // for Jm and Js.
-            const { siblingPaths } = buildSplitJoinPairs(rdlt);
+            const { siblingPaths } = buildSplitJoinPairs(traversableRdlt);
             const splitIds = new Set();
             const pairedJoinIds = new Set();
             for (const paths of siblingPaths.values()) {
@@ -1364,22 +1378,19 @@ export class Soundness {
                 continue;
             }
 
-            const joinVertices = rdlt.vertices.filter(vertex => {
-                const incomingArcs = rdltArcs.filter(edge =>
-                    String(edge.to.id) === String(vertex.id) &&
-                    contractedVertexIds.has(String(edge.from.id)) &&
-                    contractedVertexIds.has(String(edge.to.id))
+            const joinVertices = traversableRdlt.vertices.filter(vertex => {
+                const incomingArcs = traversableRdltArcs.filter(edge =>
+                    String(edge.to.id) === String(vertex.id)
                 );
                 return pairedJoinIds.has(String(vertex.id)) &&
                     joinTypes.has(String(vertex.id)) &&
                     incomingArcs.length > 1;
             });
             const joinVertexIds = new Set(joinVertices.map(vertex => String(vertex.id)));
-            const esplitArcs = rdltArcs.filter(edge => {
+            const esplitArcs = traversableRdltArcs.filter(edge => {
                 const arcKey = `${String(edge.from.id)}->${String(edge.to.id)}`;
                 return splitIds.has(String(edge.from.id)) &&
                     !loopingArcKeys.has(arcKey) &&
-                    contractedVertexIds.has(String(edge.to.id)) &&
                     !joinVertexIds.has(String(edge.to.id));
             });
             const esplits = esplitArcs.length;
