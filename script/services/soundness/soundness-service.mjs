@@ -658,7 +658,7 @@ export function verifySoundness(model, source, sink, soundnessNotion, kmaxInstan
     if (soundnessNotion === 'weak' && soundnessPass) {
         theoreticalNote = {
             theorem: "Theorem 7",
-            statement: "If R is classically sound, then it is kᵐᵃˣ-sound, where R has one traversable arc from the source vertex and R is impedance-free and kᵐᵃˣ-ensuring, where kᵐᵃˣ = 1.",
+            statement: "If R is weak sound, then it is kᵐᵃˣ-sound, where R has one traversable arc from the source vertex and R is impedance-free and kᵐᵃˣ-ensuring, where kᵐᵃˣ = 1.",
             explanation: ""
         };
     }
