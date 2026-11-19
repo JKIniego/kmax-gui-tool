@@ -56,12 +56,14 @@ export function getKmaxJoinTypes(graph) {
 
         const constraints = new Set(edges.map(edge => {
             const constraint = edge.constraint ?? "";
-            return ["", "ϵ", "ε", "epsilon", "E"].includes(constraint)
+            return ["", "ϵ", "ε"].includes(constraint)
                 ? ""
                 : String(constraint);
         }));
 
-        if (constraints.size === 1) {
+        if (constraints.size === edges.length && !constraints.has("")) {
+            joinTypes.set(vertexId, "AND");
+        } else if (constraints.size === 1) {
             joinTypes.set(vertexId, "OR");
         } else if (constraints.size === 2) {
             joinTypes.set(vertexId, constraints.has("") ? "MIX" : "AND");
