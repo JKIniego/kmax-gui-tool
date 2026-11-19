@@ -229,7 +229,7 @@ export default class ModellingManager {
     }
 
     /**
-     * @param {"mouse-move" | "mouse-down" | "mouse-up" | "key-delete" | "key-selectall" | "key-arrowdown" | "key-arrowup" | "key-arrowleft" | "key-arrowright"} event 
+     * @param {"mouse-move" | "mouse-down" | "mouse-up" | "key-delete" | "key-selectall" | "key-arrowdown" | "key-arrowup" | "key-arrowleft" | "key-arrowright" | "key-undo" | "key-redo"} event 
      * @param {{ x?: number, y?: number }} props 
      */
     onDrawingViewUserEvent(event, props = {}) {
@@ -315,6 +315,12 @@ export default class ModellingManager {
                         break;
                     case "key-cut":
                         this.#cutSelected();
+                        break;
+                    case "key-undo":
+                        this.undo();
+                        break;
+                    case "key-redo":
+                        this.redo();
                         break;
                 }
             break;
