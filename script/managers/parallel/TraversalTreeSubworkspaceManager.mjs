@@ -536,7 +536,7 @@ export default class TraversalTreeViewerManager {
         const d3 = window.d3;
         if (!d3) {
             this.#drawMessage(
-                'D3 not found. Add <script src="https://cdn.jsdelivr.net/npm/d3@7"></script> to main.html',
+                'D3 not found. Add <script src="https://cdn.jsdelivr.net/npm/d3@7"></script> to index.html',
             );
             return;
         }
