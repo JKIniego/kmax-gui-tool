@@ -950,7 +950,7 @@ export default class ModellingManager {
         try {
             this.#clearSelection();
 
-            for(const { uid, type, identifier, label, isRBSCenter, geometry, styles } of vertices) {
+            for(const { uid, type, label, isRBSCenter, geometry, styles } of vertices) {
                 const copiedGeometry = geometry.copy();
                 copiedGeometry.position.x += copyOffset.x;
                 copiedGeometry.position.y += copyOffset.y;
@@ -958,7 +958,11 @@ export default class ModellingManager {
                 const copiedStyles = styles.copy();
 
                 const newComponent = this.addComponent(
-                    type, { identifier, label, isRBSCenter },
+                    type, {
+                        identifier: this.generateNextComponentIdentifier(),
+                        label,
+                        isRBSCenter
+                    },
                     copiedGeometry, copiedStyles
                 );
 
