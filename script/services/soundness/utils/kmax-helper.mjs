@@ -1,4 +1,37 @@
 import { findSiblings } from "../../well-handledness/src/Siblings.js";
+import { utils } from "./rdlt-utils.mjs";
+import { generateTotalContractionPath } from "./total-contraction-path.mjs";
+
+export function determineKmax(graph, model) {
+    let source = null;
+    try {
+        ({ source } = utils.getSourceAndSinkVertices(graph));
+    } catch (error) {
+        console.warn("Unable to determine source vertex for kmax check.", error);
+        return 0;
+    }
+
+    const originalArcs = model?.arcs || [];
+    const originalComponents = model?.components || [];
+
+    if (!source || originalComponents.length === 0) {
+        return 0;
+    }
+
+    const { P_Total } = generateTotalContractionPath({
+        vertices: originalComponents,
+        arcs: originalArcs,
+        source
+    });
+
+    console.log("P_Total:", P_Total);
+
+    const reachedVertices = new Set(P_Total.map(String));
+    return originalArcs.filter(arc =>
+        String(arc.fromVertexUID) === String(source.id) &&
+        reachedVertices.has(String(arc.toVertexUID))
+    ).length;
+}
 
 export function buildSplitJoinPairs(graph) {
     if (!graph || !graph.vertices || !graph.edges) {

@@ -10,7 +10,7 @@ import { Activity } from '../models/Activity.js';
 import { CASExtractor } from './cas-extractor.js';
 import { GeneralizedImpedance } from './generalized-impedance.js';
 import { generateTotalContractionPath } from './total-contraction-path.mjs';
-import { buildSplitJoinPairs, getKmaxJoinTypes } from './kmax-helper.mjs';
+import { buildSplitJoinPairs, determineKmax, getKmaxJoinTypes } from './kmax-helper.mjs';
 
 /**
 * Utility class for verifying soundness properties.
@@ -1150,7 +1150,7 @@ export class Soundness {
      *   visualizationData: Object
      * }}
      */
-    static checkkmaxSound(graph, evsa, matrixInput, kmaxInstance = null) {
+    static checkkmaxSound(graph, evsa, matrixInput) {
         const criteria = [];
         const violations = [];
         const kmaxEnsuringResults = [];
@@ -1209,41 +1209,8 @@ export class Soundness {
             };
         }
 
-        let kmax = 0;
-        let source = null;
-
-        try {
-            ({ source } = utils.getSourceAndSinkVertices(graph));
-        } catch (error) {
-            console.warn("Unable to determine source vertex for kmax check.", error);
-        }
-
         const inputModel = matrixInput?.input_rdlt?.model;
-        const originalArcs = inputModel?.arcs || [];
-        const originalComponents = inputModel?.components || [];
-
-        // The model must allow kmax-number of activities to initiate, traverse,
-        // and terminate, similar to the WF-Net definition. This creates the need
-        // to require every activity to terminate properly explicitly. With this,
-        // the kmax number of activities to be completed can be determined by the
-        // number of outgoing arcs from the source s.
-        if (kmaxInstance !== null) {
-            kmax = kmaxInstance;
-        } else if (source && originalComponents.length > 0) {
-            const { P_Total } = generateTotalContractionPath({
-                vertices: originalComponents,
-                arcs: originalArcs,
-                source
-            });
-            console.log("P_Total:", P_Total);
-            const reachedVertices = new Set([...P_Total].map(String));
-            const outgoingArcs = originalArcs.filter(
-                arc => String(arc.fromVertexUID) === String(source.id)
-            );
-            kmax = outgoingArcs.filter(
-                arc => reachedVertices.has(String(arc.toVertexUID))
-            ).length;
-        }
+        const kmax = determineKmax(graph, inputModel);
 
         console.log(`kmax = ${kmax}`);
 

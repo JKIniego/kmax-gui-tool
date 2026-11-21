@@ -12,6 +12,7 @@ import { Soundness } from './utils/soundness.js';
 import { GraphOperations } from './utils/graph-operations.js';
 import { processR2 } from './utils/create_r2.mjs';
 import { utils } from './utils/rdlt-utils.mjs';
+import { determineKmax } from './utils/kmax-helper.mjs';
 
 function getInBridges(model, arcMap, vertexMap) {
     
@@ -122,7 +123,7 @@ export function mapGUIModelToSoundness(model, source, sink){
     return {rdltGraph, combinedEvsa};
 }
 
-export function verifySoundness(model, source, sink, soundnessNotion, kmaxInstance = null) {
+export function verifySoundness(model, source, sink, soundnessNotion) {
     console.log({ model, source, sink, soundnessNotion });
     
     const arcMap = buildArcMap(model.arcs);
@@ -301,8 +302,7 @@ export function verifySoundness(model, source, sink, soundnessNotion, kmaxInstan
             const kmaxResult = Soundness.checkkmaxSound(
                 rdltGraph,
                 combinedEvsa,
-                matrixInputSound,
-                kmaxInstance
+                matrixInputSound
             );
             soundnessRuntimeMs = performance.now() - kmaxStart;
             console.timeEnd("kmax Soundness Verification");
@@ -647,7 +647,9 @@ export function verifySoundness(model, source, sink, soundnessNotion, kmaxInstan
         return { vertices: vertexUIDs, arcs: arcUIDs };
     }
 
-    if (soundnessNotion === 'classical' && soundnessPass) {
+    const kmax = determineKmax(rdltGraph, model);
+
+    if (soundnessNotion === 'classical' && soundnessPass && kmax === 1) {
         theoreticalNote = {
             theorem: "Theorem 8",
             statement: "If R is classically sound, then it is kᵐᵃˣ-sound, where R has one traversable arc from the source vertex and R is impedance-free and kᵐᵃˣ-ensuring, where kᵐᵃˣ = 1.",
@@ -655,7 +657,7 @@ export function verifySoundness(model, source, sink, soundnessNotion, kmaxInstan
         };
     }
 
-    if (soundnessNotion === 'weak' && soundnessPass) {
+    if (soundnessNotion === 'weak' && soundnessPass && kmax === 1) {
         theoreticalNote = {
             theorem: "Theorem 7",
             statement: "If R is weak sound, then it is kᵐᵃˣ-sound, where R has one traversable arc from the source vertex and R is impedance-free and kᵐᵃˣ-ensuring, where kᵐᵃˣ = 1.",

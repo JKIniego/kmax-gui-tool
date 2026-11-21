@@ -182,7 +182,8 @@ export class VerificationsResultManager {
 
   get canCheckKmax() {
     return ["classical", "weak"].includes(this.#soundnessConfig?.notion)
-      && this.result.instances[0]?.evaluation?.conclusion?.pass === true;
+      && this.result.instances[0]?.evaluation?.conclusion?.pass === true
+      && this.result.instances[0]?.evaluation?.theoreticalNote != null;
   }
 
   checkKmax() {
@@ -194,7 +195,6 @@ export class VerificationsResultManager {
       source,
       sink,
       "kmax",
-      1,
     );
     result.title = "kᵐᵃˣ Soundness Verification";
     this.context.managers.workspace.showVerificationResults(
