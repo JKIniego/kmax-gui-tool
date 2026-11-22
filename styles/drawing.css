@@ -295,3 +295,16 @@ svg .arc-waypoint:not([data-nomove]) {
 .tas-subworkspace .arc.active .arc-highlight {
   stroke: #e2d971 !important;
 }
+
+
+
+.fit-view-btn {
+  position: absolute;
+  bottom: 14px;
+  right: 14px;
+  z-index: 5;
+  height: 34px;
+  width: 34px;
+  font-size: 15px;
+  background-color: #ffffff;
+}

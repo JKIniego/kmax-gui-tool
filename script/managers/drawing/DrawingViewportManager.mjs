@@ -49,6 +49,8 @@ export class DrawingViewportManager {
                 this.zoomIn();
             } else if(setHasExact(keys, "Control", "-")) {
                 this.zoomOut();
+            } else if(setHasExact(keys, "Control", "0")) {
+                this.fitToView();
             }
         });
     }
@@ -85,6 +87,61 @@ export class DrawingViewportManager {
 
     zoomOut(relativeCursorPosition) {
         this.#zoom(1/this.#view.motion.zoomFactor, relativeCursorPosition);
+    }
+
+        /**
+     * Zooms and pans so that all drawn content (vertices, arcs, RBS boxes)
+     * is centered and fully visible.
+     *
+     * @param {{ padding?: number, minZoom?: number, maxZoom?: number }} options
+     * @returns {boolean} true if the viewport was updated
+     */
+    fitToView({ padding = 60, minZoom = 0.05, maxZoom = 1.5 } = {}) {
+        const { width, height } = this.#svgElement.getBoundingClientRect();
+        if(width === 0 || height === 0) return false; // not visible yet
+
+        const layers = this.#svgElement.querySelectorAll(
+            ":scope > .group-rbs, :scope > .group-arcs, :scope > .group-vertices");
+
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        for(const layer of layers) {
+            let box;
+            try { box = layer.getBBox(); } catch { continue; }
+            if(box.width === 0 && box.height === 0) continue;
+
+            minX = Math.min(minX, box.x);
+            minY = Math.min(minY, box.y);
+            maxX = Math.max(maxX, box.x + box.width);
+            maxY = Math.max(maxY, box.y + box.height);
+        }
+
+        const { states } = this.#view;
+
+        if(!isFinite(minX)) {
+            // Nothing drawn: reset to the default view
+            states.zoom = 1;
+            states.offset = { x: 0, y: 0 };
+            this.#updateViewport();
+            return true;
+        }
+
+        const contentW = maxX - minX;
+        const contentH = maxY - minY;
+
+        const zoom = Math.min(
+            width / (contentW + padding * 2),
+            height / (contentH + padding * 2)
+        );
+        states.zoom = Math.min(maxZoom, Math.max(minZoom, zoom));
+
+        // Center the content in the viewport
+        states.offset = {
+            x: minX - (width / states.zoom - contentW) / 2,
+            y: minY - (height / states.zoom - contentH) / 2
+        };
+
+        this.#updateViewport();
+        return true;
     }
 
     #updateViewport() {

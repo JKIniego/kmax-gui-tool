@@ -88,6 +88,8 @@ export class VerificationsResultManager {
 
   #currentInstanceIndex = 0;
 
+  #fittedInstances = new Set();
+
   /**
    * @param {ModelContext} context
    * @param {VerificationResultData} result

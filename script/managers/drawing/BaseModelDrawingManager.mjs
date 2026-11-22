@@ -75,6 +75,9 @@ export class BaseModelDrawingManager {
         this.drawingSVG.appendChild(this.groups.vertices);
 
         this.viewport = new DrawingViewportManager(this.drawingSVG);
+
+        this.drawingSVG.__viewport = this.viewport;
+        this.#ensureFitButton();
     }
 
     /**
@@ -117,6 +120,11 @@ export class BaseModelDrawingManager {
             const vertices = [...rbsVertices[centerVertexUID]].map(uid => vertexMap[uid]);
             const centerVertex = vertexMap[centerVertexUID];
             this.#addRBS(centerVertex, vertices);
+        }
+
+        // Subworkspaces start fitted; the main editor keeps its saved view
+        if(this.origin !== "model") {
+            requestAnimationFrame(() => this.viewport.fitToView());
         }
     }
 
@@ -336,5 +344,25 @@ export class BaseModelDrawingManager {
 
         this.#highlights.vertices.clear();
         this.#highlights.arcs.clear();
+    }
+
+    /** Adds one floating "Fit to view" button per drawing container. */
+    #ensureFitButton() {
+        const container = this.drawingSVG.parentElement;
+        if(!container || container.querySelector(":scope > .fit-view-btn")) return;
+
+        const button = document.createElement("button");
+        button.className = "action fit-view-btn";
+        button.title = "Fit to view (Ctrl+0)";
+        button.innerHTML = `<i class="fas fa-expand"></i>`;
+        button.addEventListener("click", (event) => {
+            event.stopPropagation();
+            // Fit whichever SVG in this container is currently visible
+            for(const svg of container.querySelectorAll(":scope > svg")) {
+                if(svg.getBoundingClientRect().width > 0) svg.__viewport?.fitToView();
+            }
+        });
+
+        container.appendChild(button);
     }
 }

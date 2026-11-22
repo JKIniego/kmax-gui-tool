@@ -15,6 +15,7 @@ export class GlobalKeyEventsManager {
     static overridenKeys = [
         [ "Control", "=" ],
         [ "Control", "-" ],
+        [ "Control", "0" ],
         [ "Control", "d" ],
         [ "Control", "z" ],
         [ "Control", "y" ],
