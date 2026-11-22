@@ -199,7 +199,7 @@ export class BaseModelDrawingManager {
         } else if(displayArcForm === "curved") {
             points.push(end);
         } else {
-            points.push(...geometry.waypoints, end);
+            points.push(...(displayArcForm === "elbowed" ? geometry.waypoints : []), end);
         }
 
         const curveDiff = 44;

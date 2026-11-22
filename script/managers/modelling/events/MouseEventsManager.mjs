@@ -103,6 +103,22 @@ export default class MouseEventsManager {
             this.#parent.onArcMouseEvent(mouseEvent, id, { drawingX, drawingY });
             if(elementEvent === "mousedown") event.stopPropagation();
         }));
+
+        arcTriggerElement.addEventListener("dblclick", (event) => {
+            const { x: drawingX, y: drawingY } = this.#getRelativeDrawingPosition(event.clientX, event.clientY);
+            this.#parent.onArcMouseEvent("double-click", id, { drawingX, drawingY });
+        });
+
+        const waypointsElement = rootElement.querySelector(".arc-waypoints");
+        for(const [ elementEvent, mouseEvent ] of [ [ "mousedown", "mouse-down" ], [ "dblclick", "double-click" ] ]) {
+            waypointsElement.addEventListener(elementEvent, (event) => {
+                const index = event.target.getAttribute("data-waypoint-index");
+                if(index === null) return;
+
+                this.#parent.onArcWaypointMouseEvent(mouseEvent, id, Number(index));
+                event.stopPropagation();
+            });
+        }
     }
 
     

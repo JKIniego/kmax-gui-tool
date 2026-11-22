@@ -160,6 +160,7 @@ function loadVertexGeometryFromParsed(parsedVertexGeometry) {
 
 function loadArcGeometryFromParsed(parsedArcGeometry) {
     return new ArcGeometry({
+        pathType: parsedArcGeometry.waypoints?.length ? "elbowed" : "straight",
         isAutoDraw: parsedArcGeometry.isAutoDraw,
         arcLabel: parsedArcGeometry.label,
         waypoints: parsedArcGeometry.waypoints || [],

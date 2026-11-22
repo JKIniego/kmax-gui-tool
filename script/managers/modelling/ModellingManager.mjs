@@ -8,12 +8,14 @@ import { isVertexAnObject } from "../../utils.mjs";
 import ModelContext from "../model/ModelContext.mjs";
 import { LocalSessionManager } from "../session/LocalSessionManager.mjs";
 import { ClipboardManager } from "../workspace/ClipboardManager.mjs";
+import { getDistanceToSegment } from "../../render/builders/utils.mjs";
 
 export default class ModellingManager {
     /** @type { ModelContext } */
     context;
 
     #history = { snapshots: [], index: -1, batchDepth: 0, batchChanged: false };
+    #waypointDrag = null;
 
     
     /**
@@ -266,6 +268,10 @@ export default class ModellingManager {
                             this.context.managers.arcTracing.moveTo(x, y);
                         }
 
+                        if(this.#waypointDrag) {
+                            this.#dragWaypoint(x, y);
+                        }
+
                         break;
                     case "mouse-up":
                         if(modellingEvents.isMoving) {
@@ -282,6 +288,11 @@ export default class ModellingManager {
 
                         if(modellingEvents.isArcTracing) {
                             this.#endArcTracing();
+                        }
+
+                        if(this.#waypointDrag) {
+                            this.#waypointDrag = null;
+                            this.#saveModel();
                         }
                         break;
                     case "key-delete":
@@ -366,7 +377,9 @@ export default class ModellingManager {
                         }
 
                         break;
-                    
+                    case "double-click":
+                        this.#addArcWaypoint(id, props.drawingX, props.drawingY);
+                        break;
                 }
             break;
         }
@@ -620,6 +633,7 @@ export default class ModellingManager {
     #updateIncidentArcGeometries(vertexUID) {
         const incidentArcs = this.context.managers.visualModel.getArcsIncidentToComponent(vertexUID);
         for(const arc of incidentArcs) {
+            this.#autoDrawArc(arc);
             const vertex1Geometry = this.getComponentById(arc.fromVertexUID).geometry;
             const vertex2Geometry = this.getComponentById(arc.toVertexUID).geometry;
             this.context.managers.drawing.updateArcGeometry(arc, vertex1Geometry, vertex2Geometry);
@@ -841,6 +855,91 @@ export default class ModellingManager {
             this.#notifyModelStructureChangesListeners();
             this.#saveModel();
         }
+    }
+
+    onArcWaypointUserEvent(event, arcUID, index) {
+        switch(event) {
+            case "mouse-down":
+                this.#waypointDrag = { arcUID, index };
+                break;
+            case "double-click":
+                this.#removeArcWaypoint(arcUID, index);
+                break;
+        }
+    }
+
+    updateArcGeometryProps(id, props) {
+        const arc = this.getArcById(id);
+        if(!arc) return;
+
+        if('pathType' in props) arc.geometry.pathType = props.pathType;
+        if('isAutoDraw' in props) arc.geometry.isAutoDraw = props.isAutoDraw;
+
+        this.#autoDrawArc(arc);
+        this.#redrawArc(arc);
+        this.#saveModel();
+    }
+
+    #redrawArc(arc) {
+        const from = this.getComponentById(arc.fromVertexUID).geometry;
+        const to = this.getComponentById(arc.toVertexUID).geometry;
+        this.context.managers.drawing.updateArcGeometry(arc, from, to);
+    }
+
+    #autoDrawArc(arc) {
+        if(arc.form !== "elbowed" || !arc.geometry.isAutoDraw) return;
+
+        const from = this.getComponentById(arc.fromVertexUID).geometry.position;
+        const to = this.getComponentById(arc.toVertexUID).geometry.position;
+        const midX = (from.x + to.x) / 2;
+        arc.geometry.waypoints = [ { x: midX, y: from.y }, { x: midX, y: to.y } ];
+    }
+
+    #dragWaypoint(x, y) {
+        const { arcUID, index } = this.#waypointDrag;
+        const arc = this.getArcById(arcUID);
+        if(!arc) return;
+
+        arc.geometry.waypoints[index] = { x, y };
+        arc.geometry.isAutoDraw = false;
+        this.#redrawArc(arc);
+        this.context.managers.panels.properties.refreshOneArcValues(arc);
+    }
+
+    #addArcWaypoint(arcUID, x, y) {
+        const arc = this.getArcById(arcUID);
+        if(!arc || arc.form === "self-loop") return;
+
+        const from = this.getComponentById(arc.fromVertexUID).geometry.position;
+        const to = this.getComponentById(arc.toVertexUID).geometry.position;
+        const points = [ from, ...arc.geometry.waypoints, to ];
+
+        let insertIndex = 0, minDistance = Infinity;
+        for(let i = 0; i < points.length - 1; i++) {
+            const distance = getDistanceToSegment({ x, y }, points[i], points[i+1]);
+            if(distance < minDistance) {
+                minDistance = distance;
+                insertIndex = i;
+            }
+        }
+
+        arc.geometry.pathType = "elbowed";
+        arc.geometry.isAutoDraw = false;
+        arc.geometry.waypoints.splice(insertIndex, 0, { x, y });
+        this.#redrawArc(arc);
+        this.context.managers.panels.properties.refreshOneArcValues(arc);
+        this.#saveModel();
+    }
+
+    #removeArcWaypoint(arcUID, index) {
+        const arc = this.getArcById(arcUID);
+        if(!arc) return;
+
+        arc.geometry.waypoints.splice(index, 1);
+        arc.geometry.isAutoDraw = false;
+        this.#redrawArc(arc);
+        this.context.managers.panels.properties.refreshOneArcValues(arc);
+        this.#saveModel();
     }
 
     #notifyModelStructureChangesListeners() {

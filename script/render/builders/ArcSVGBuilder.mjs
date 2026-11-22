@@ -306,6 +306,8 @@ export default class ArcSVGBuilder {
                     
                     if(i === 0 || i === drawPoints.length-1) {
                         waypointElement.setAttribute("data-nomove", "");
+                    } else {
+                        waypointElement.setAttribute("data-waypoint-index", i-1);
                     }
 
                     this.#waypointsElement.appendChild(waypointElement);

@@ -123,4 +123,13 @@ export default class UserEventsManager {
     onArcMouseEvent(event, id, props) {
         this.context.managers.modelling.onArcUserEvent(event, id, props);
     }
+
+    /**
+     * @param {"mouse-down" | "double-click"} event 
+     * @param {number} id 
+     * @param {number} index
+     */
+    onArcWaypointMouseEvent(event, id, index) {
+        this.context.managers.modelling.onArcWaypointUserEvent(event, id, index);
+    }
 }

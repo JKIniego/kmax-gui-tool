@@ -99,6 +99,8 @@ export default class PropertiesPanelManager {
 
         if([ 'C', 'L' ].includes(fieldName)) {
             modellingManager.updateArcProps(arcUID, { [fieldName]: fieldName === 'L' ? Number(value) || 1 : value });
+        } else if([ 'pathType', 'isAutoDraw' ].includes(fieldName)) {
+            modellingManager.updateArcGeometryProps(arcUID, { [fieldName]: value });
         }
     }
 

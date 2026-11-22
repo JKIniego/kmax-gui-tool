@@ -88,8 +88,7 @@ export default class VisualArc {
 
     get form() {
         if(this.fromVertexUID === this.toVertexUID) return "self-loop";
-
-        return "straight";
+        return this.geometry.pathType === "elbowed" ? "elbowed" : "straight";
     }
 
     get controlPoint() {

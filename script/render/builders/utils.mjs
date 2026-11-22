@@ -85,3 +85,10 @@ export function getCircleIntersections(radius1, center1, radius2, center2) {
     ? [intersection1, intersection2]
     : [intersection2, intersection1];
 }
+
+export function getDistanceToSegment(p, a, b) {
+  const dx = b.x - a.x, dy = b.y - a.y;
+  const lengthSq = dx * dx + dy * dy;
+  const t = lengthSq === 0 ? 0 : Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / lengthSq));
+  return getDistance(p, { x: a.x + t * dx, y: a.y + t * dy });
+}
