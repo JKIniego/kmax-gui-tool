@@ -284,6 +284,13 @@ export class VerificationsResultManager {
       .getInstanceSVG(instanceIndex)
       .classList.add("active");
 
+    if (!this.#fittedInstances.has(instanceIndex)) {
+      this.#fittedInstances.add(instanceIndex);
+      requestAnimationFrame(() =>
+        this.#drawingManagers[instanceIndex]?.viewport.fitToView()
+      );
+    }
+
     // Set data attribute for highlight color: green for Shared Arc, red otherwise
     const root = this.#subworkspaceManager.getRootElement();
     if (instance.name === "Shared Arc") {
