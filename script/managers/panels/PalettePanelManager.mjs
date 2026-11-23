@@ -28,6 +28,7 @@ export default class PalettePanelManager {
             const elementID = draggableElement.getAttribute("data-element");
 
             draggableElement.addEventListener("mousedown", (event) => {
+                if(this.context.managers.modelling.modellingStates.mode !== "select") return;
                 if(elementID === "component") {
                     const componentType = draggableElement.getAttribute("data-component-type");
                     this.context.managers.dragAndDrop.handleComponentDND(componentType);

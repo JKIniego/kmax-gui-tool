@@ -11,6 +11,12 @@
   min-height: 0;
 }
 
+.model-context[data-mode="view"] .palette-draggable-element {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
+}
+
 .panel {
   padding: 24px;
   box-sizing: border-box;

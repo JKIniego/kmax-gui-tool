@@ -47,6 +47,16 @@ svg .arctracing-hover {
   pointer-events: none;
 }
 
+.model-context[data-mode="view"] svg .arctracing-hover,
+.model-context[data-mode="view"] svg .component-hover {
+  display: none;
+  pointer-events: none;
+}
+
+.model-context[data-mode="view"] svg .arc-waypoint {
+  pointer-events: none !important;
+}
+
 svg .component-hover {
   transition: opacity 100ms ease;
   opacity: 0;

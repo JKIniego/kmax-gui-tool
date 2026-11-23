@@ -237,4 +237,13 @@ export default class PropertiesPanelManager {
             this.#rootElement.removeAttribute("data-view-none");
         }
     }
+
+    setReadOnly(isReadOnly) {
+        const controls = this.#rootElement.querySelectorAll(
+            "[data-viewonly='component'] input, [data-viewonly='component'] select, " +
+            "[data-viewonly='arc'] input, [data-viewonly='arc'] select, " +
+            "button[data-action^='remove']"
+        );
+        controls.forEach(control => control.disabled = isReadOnly);
+    }
 }

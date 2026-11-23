@@ -77,12 +77,21 @@ export default class ModellingManager {
         this.#notifyModelStructureChangesListeners();
     }
 
+    setMode(mode) {
+        this.modellingStates.mode = mode;
+        this.context.managers.workspace.setMode(mode);
+        this.context.managers.panels.properties.setReadOnly(mode !== "select");
+        this.#updateUndoRedoButtons();
+    }
+
     undo() {
+        if(this.modellingStates.mode !== "select") return;
         if(this.#history.index <= 0) return;
         this.#restoreHistory(this.#history.index - 1);
     }
 
     redo() {
+        if(this.modellingStates.mode !== "select") return;
         if(this.#history.index >= this.#history.snapshots.length - 1) return;
         this.#restoreHistory(this.#history.index + 1);
     }
@@ -118,9 +127,10 @@ export default class ModellingManager {
     }
 
     #updateUndoRedoButtons() {
+        const editable = this.modellingStates.mode === "select";
         this.context.managers.workspace.setUndoRedoState(
-            this.#history.index > 0,
-            this.#history.index < this.#history.snapshots.length - 1
+            editable && this.#history.index > 0,
+            editable && this.#history.index < this.#history.snapshots.length - 1
         );
     }
 
@@ -226,7 +236,14 @@ export default class ModellingManager {
                         }
                     break;
                 }
-            break;
+                break;
+            case "view":
+                if(event === "mouse-down" && !selected.components.includes(id)) {
+                    this.#clearSelection();
+                    this.#addComponentToSelection(id);
+                    this.#refreshSelected();
+                }
+                break;
         }
     }
 
@@ -334,7 +351,13 @@ export default class ModellingManager {
                         this.redo();
                         break;
                 }
-            break;
+                break;
+            case "view":
+                if(event === "mouse-down") {
+                    this.#clearSelection();
+                    this.#refreshSelected();
+                }
+                break;
         }
     }
 
@@ -345,6 +368,7 @@ export default class ModellingManager {
      * @param {{ drawingX: number, drawingY: number }} props
      */
     onArcTracingHoverUserEvent(event, componentUID, props) {
+        if(this.modellingStates.mode !== "select") return;
         switch(event) {
             case "mouse-down":
                 this.#startArcTracing(componentUID);
@@ -381,7 +405,14 @@ export default class ModellingManager {
                         this.#addArcWaypoint(id, props.drawingX, props.drawingY);
                         break;
                 }
-            break;
+                break;
+            case "view":
+                if(event === "mouse-down" && !selected.arcs.includes(id)) {
+                    this.#clearSelection();
+                    this.#addArcToSelection(id);
+                    this.#refreshSelected();
+                }
+                break;
         }
     }
 
@@ -858,6 +889,7 @@ export default class ModellingManager {
     }
 
     onArcWaypointUserEvent(event, arcUID, index) {
+        if(this.modellingStates.mode !== "select") return;
         switch(event) {
             case "mouse-down":
                 this.#waypointDrag = { arcUID, index };

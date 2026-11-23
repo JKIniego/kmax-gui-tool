@@ -96,8 +96,11 @@ export default class WorkspaceManager {
 
         this.#view.main = rootElement.querySelector(".main-view");
         // Initialize mode buttons
-        [...rootElement.querySelectorAll('button[data-mode]')].forEach(
-            button => this.#view.buttons.modes[button.getAttribute("data-mode")] = button);
+        [...rootElement.querySelectorAll('button[data-mode]')].forEach(button => {
+            const mode = button.getAttribute("data-mode");
+            this.#view.buttons.modes[mode] = button;
+            button.addEventListener("click", () => this.context.managers.modelling.setMode(mode));
+        });
         
         // Initialize action buttons
         [...rootElement.querySelectorAll('button[data-action]')].forEach(
@@ -188,6 +191,13 @@ export default class WorkspaceManager {
 
             
         }
+    }
+
+    setMode(mode) {
+        for(const [ m, button ] of Object.entries(this.#view.buttons.modes)) {
+            button.classList.toggle("active", m === mode);
+        }
+        this.#view.root.setAttribute("data-mode", mode);
     }
 
     setUndoRedoState(canUndo, canRedo) {
